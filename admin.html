@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Control Panel</title>
+    
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        body {
+            max-width: 800px;
+            margin: 20px auto;
+            background-color: #fff;
+        }
+        .admin-form {
+            display: grid;
+            gap: 15px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .admin-form label {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: -5px;
+        }
+        .admin-form input,
+        .admin-form select,
+        .admin-form button {
+            width: 100%;
+            padding: 12px;
+            font-size: 1rem;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            box-sizing: border-box; /* Important for 100% width */
+        }
+        .admin-form button {
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.2s;
+        }
+        .admin-form button:hover {
+            background-color: #0056b3;
+        }
+        .status-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        /* Style for the 'selected' status button */
+        .status-buttons button.selected {
+            background-color: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+        #update-message {
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Doctor Status Control</h1>
+    </header>
+
+    <main>
+        <div class="admin-form">
+            
+            <label for="doctor-select">1. Select Doctor</label>
+            <select id="doctor-select">
+                <option value="">Loading doctors...</option>
+                </select>
+
+            <label>2. Set Status</label>
+            <div class="status-buttons" id="status-buttons">
+                <button type="button" data-status="On Time">On Time</button>
+                <button type="button" data-status="15m Delay">15m Delay</button>
+                <button type="button" data-status="30m Delay">30m Delay</button>
+                <button type="button" data-status="Away">Away</button>
+            </div>
+
+            <label for="current-appt">3. Current Appointment</label>
+            <input type="text" id="current-appt" placeholder="e.g., A-104 (11:00 AM)">
+
+            <label for="next-appt">4. Next Appointment</label>
+            <input type="text" id="next-appt" placeholder="e.g., A-105 (11:30 AM)">
+
+            <button id="update-button">Update Status</button>
+
+            <p id="update-message"></p>
+
+        </div>
+    </main>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    
+    <script src="admin.js"></script>
+    
+</body>
+</html>
