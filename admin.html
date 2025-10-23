@@ -7,7 +7,12 @@
     
     <link rel="stylesheet" href="style.css">
 
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.14/main.min.css' rel='stylesheet' />
     <style>
+        /* [Your existing <style> code goes here...] */
+        /* [It's all the same, so I've hidden it for brevity] */
+        /* [The CSS you added for login, sign-out, and password is all still here] */
+
         body {
             max-width: 800px;
             margin: 20px auto;
@@ -34,7 +39,7 @@
             font-size: 1rem;
             border-radius: 5px;
             border: 1px solid #ccc;
-            box-sizing: border-box; /* Important for 100% width */
+            box-sizing: border-box; 
         }
         .admin-form button {
             background-color: #007bff;
@@ -51,7 +56,6 @@
             display: flex;
             gap: 10px;
         }
-        /* Style for the 'selected' status button */
         .status-buttons button.selected {
             background-color: #28a745;
             color: white;
@@ -63,8 +67,6 @@
             font-weight: bold;
             margin-top: 15px;
         }
-
-        /* --- --- */
         #login-container {
             max-width: 400px;
             margin: 50px auto;
@@ -108,25 +110,54 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            float: right; /* Put it in the corner */
+            float: right; 
             font-size: 0.9rem;
         }
-        /* --- --- */
-		
-		/* --- NEW STYLES FOR PASSWORD BUTTON --- */
-		.admin-form button.secondary-button {
-			background-color: #6c757d; /* A neutral gray */
-			margin-top: 10px; /* Add some space above */
-		}
-		.admin-form button.secondary-button:hover {
-			background-color: #5a6268;
-		}
-		#password-message {
-			text-align: center;
-			font-size: 1.0rem;
-			font-weight: bold;
-		}
-		/* --- END NEW STYLES --- */
+        .admin-form button.secondary-button {
+            background-color: #6c757d;
+            margin-top: 10px;
+        }
+        .admin-form button.secondary-button:hover {
+            background-color: #5a6268;
+        }
+        #password-message {
+            text-align: center;
+            font-size: 1.0rem;
+            font-weight: bold;
+        }
+
+        /* --- ===== NEW STYLES (Step 2.2) ===== --- */
+        /* Tab Navigation */
+        .tab-navigation {
+            display: flex;
+            border-bottom: 2px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .tab-button {
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border: none;
+            background-color: transparent;
+            color: #555;
+            border-bottom: 3px solid transparent; /* For the active state */
+            margin-bottom: -2px; /* Aligns with the container's border */
+        }
+        .tab-button.active {
+            color: #007bff;
+            border-bottom-color: #007bff;
+        }
+
+        /* Tab Content Panel */
+        .tab-panel {
+            display: none; /* Hide all panels by default */
+        }
+        .tab-panel.active {
+            display: block; /* Show only the active one */
+        }
+        /* --- ===== END NEW STYLES ===== --- */
+
     </style>
 </head>
 <body>
@@ -146,38 +177,56 @@
             <h1>Doctor Status Control</h1>
         </header>
 
+        <nav class="tab-navigation">
+            <button id="tab-status" class="tab-button active">Update Status</button>
+            <button id="tab-calendar" class="tab-button">Bookings Calendar</button>
+        </nav>
         <main>
-            <div class="admin-form">
-                
-                <label>Set Status</label>
-                <div class="status-buttons" id="status-buttons">
-                    <button type="button" data-status="On Time">On Time</button>
-                    <button type="button" data-status="15m Delay">15m Delay</button>
-                    <button type="button" data-status="30m Delay">30m Delay</button>
-                    <button type="button" data-status="Away">Away</button>
+
+            <div id="panel-status" class="tab-panel active">
+                <div class="admin-form">
+                    
+                    <label>Set Status</label>
+                    <div class="status-buttons" id="status-buttons">
+                        <button type="button" data-status="On Time">On Time</button>
+                        <button type="button" data-status="15m Delay">15m Delay</button>
+                        <button type="button" data-status="30m Delay">30m Delay</button>
+                        <button type="button" data-status="Away">Away</button>
+                    </div>
+
+                    <label for="current-appt">Current Appointment</label>
+                    <input type="text" id="current-appt" placeholder="e.g., A-104 (11:00 AM)">
+
+                    <label for="next-appt">Next Appointment</label>
+                    <input type="text" id="next-appt" placeholder="e.g., A-105 (11:30 AM)">
+
+                    <button id="update-button">Update Status</button>
+                    <p id="update-message"></p>
+                    
+                    <button id="change-password-button" class="secondary-button">Change Password</button>
+                    <p id="password-message"></p>
+
                 </div>
-
-                <label for="current-appt">3. Current Appointment</label>
-                <input type="text" id="current-appt" placeholder="e.g., A-104 (11:00 AM)">
-
-                <label for="next-appt">4. Next Appointment</label>
-                <input type="text" id="next-appt" placeholder="e.g., A-105 (11:30 AM)">
-
-                <button id="update-button">Update Status</button>
-
-                <p id="update-message"></p>
-				
-				<button id="change-password-button" class="secondary-button">Change Password</button>
-				<p id="password-message"></p>
-
             </div>
-        </main>
-    </div> <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+            <div id="panel-calendar" class="tab-panel">
+                
+                <div id="calendar-container"></div>
+                
+                <p style="text-align: center; color: #555; margin-top: 15px;">
+                    Click on a date to book a new appointment.
+                    <br>
+                    Click on an existing appointment to delete it.
+                </p>
+            </div>
+            </main>
+    </div> 
 
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.14/main.min.js'></script>
     <script src="admin.js"></script>
     
 </body>

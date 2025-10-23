@@ -11,7 +11,7 @@ const firebaseConfig = {
 // STEP 2: Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-// STEP 3: Get references to the new services (Auth and Firestore)
+// STEP 3: Get references to the services
 const auth = firebase.auth();
 const db = firebase.firestore();
 
@@ -27,46 +27,66 @@ const loginMessage = document.getElementById('login-message');
 // --- Admin content elements ---
 const adminContent = document.getElementById('admin-content');
 const signOutButton = document.getElementById('sign-out-button');
+const updateButton = document.getElementById('update-button');
+const updateMessage = document.getElementById('update-message');
+const changePasswordButton = document.getElementById('change-password-button');
+const passwordMessage = document.getElementById('password-message');
+
+// --- Status Panel elements ---
 const statusButtonsContainer = document.getElementById('status-buttons');
 const currentApptInput = document.getElementById('current-appt');
 const nextApptInput = document.getElementById('next-appt');
-const updateButton = document.getElementById('update-button');
-const updateMessage = document.getElementById('update-message');
 
-// --- NEW PASSWORD ELEMENTS ---
-const changePasswordButton = document.getElementById('change-password-button');
-const passwordMessage = document.getElementById('password-message');
+// --- NEW (Phase 3): Tab elements ---
+const tabStatus = document.getElementById('tab-status');
+const tabCalendar = document.getElementById('tab-calendar');
+const panelStatus = document.getElementById('panel-status');
+const panelCalendar = document.getElementById('panel-calendar');
+
+// --- NEW (Phase 3): Calendar element ---
+const calendarEl = document.getElementById('calendar-container');
 
 // STEP 5: Create global variables to store state
 let selectedStatus = '';
 let currentUser = null;
-let currentDoctorDocId = null; // This will store the doctor's *document ID* (e.g., "dr_smith")
+let currentDoctorDocId = null;
+let calendar = null; // This will hold the FullCalendar object
+let appointmentsListener = null; // This will hold our Firebase listener
 
 // =================================================================
-// --- MASTER AUTH FUNCTION (This is the "main" function) ---
+// --- MASTER AUTH FUNCTION ---
 // =================================================================
 auth.onAuthStateChanged(user => {
     if (user) {
         // --- USER IS LOGGED IN ---
-        currentUser = user; // Save the user's data
-        
-        // Show the admin controls, hide the login form
+        currentUser = user;
         adminContent.style.display = 'block';
         loginContainer.style.display = 'none';
 
-        // Find the doctor document that belongs to this user
+        // Load the two main data components
         loadDoctorProfile(user.uid);
+        initializeCalendar(user.uid); // NEW
         
     } else {
         // --- USER IS LOGGED OUT ---
         currentUser = null;
         currentDoctorDocId = null;
-
-        // Show the login form, hide the admin controls
         adminContent.style.display = 'none';
         loginContainer.style.display = 'block';
 
-        // Clear the form
+        // --- NEW (Phase 3): Cleanup ---
+        // Detach the Firebase listener to prevent memory leaks
+        if (appointmentsListener) {
+            appointmentsListener(); // This stops the listener
+            appointmentsListener = null;
+        }
+        // Destroy the calendar instance
+        if (calendar) {
+            calendar.destroy();
+            calendar = null;
+        }
+
+        // Clear the status form
         currentApptInput.value = '';
         nextApptInput.value = '';
         selectedStatus = '';
@@ -76,73 +96,182 @@ auth.onAuthStateChanged(user => {
 // =================================================================
 // --- AUTH FUNCTIONS (Login / Logout / Reset) ---
 // =================================================================
-
-// --- Handles the Login button click ---
+// (These functions are all unchanged)
 function onLoginClick() {
     const email = loginEmail.value;
     const password = loginPassword.value;
-
     if (!email || !password) {
         loginMessage.textContent = 'Please enter both email and password.';
         return;
     }
-
     loginMessage.textContent = 'Logging in...';
-
     auth.signInWithEmailAndPassword(email, password)
         .then(userCredential => {
-            // Success! The `onAuthStateChanged` function above
-            // will automatically handle hiding the login form.
             loginMessage.textContent = '';
             loginEmail.value = '';
             loginPassword.value = '';
         })
         .catch(error => {
-            // Handle errors
             console.error("Login Error:", error.message);
             loginMessage.textContent = 'Error: ' + error.message;
         });
 }
 
-// --- Handles the Sign Out button click ---
 function onSignOutClick() {
-    auth.signOut().catch(error => {
-        console.error("Sign Out Error:", error);
-    });
+    auth.signOut().catch(error => console.error("Sign Out Error:", error));
 }
 
-// --- Handles the "Change Password" button click ---
 function onChangePasswordClick() {
     if (!currentUser) {
         showMessage('You must be logged in to change your password.', 'error');
         return;
     }
-
     const email = currentUser.email;
     passwordMessage.textContent = 'Sending reset email...';
-
     auth.sendPasswordResetEmail(email)
         .then(() => {
             passwordMessage.textContent = 'Success! Check your email inbox for a reset link.';
-            passwordMessage.style.color = '#006421'; // Success green
-            
-            // Clear the message after 7 seconds
-            setTimeout(() => {
-                passwordMessage.textContent = '';
-            }, 7000);
+            passwordMessage.style.color = '#006421';
+            setTimeout(() => { passwordMessage.textContent = ''; }, 7000);
         })
         .catch(error => {
             console.error("Password Reset Error:", error);
             passwordMessage.textContent = 'Error: ' + error.message;
-            passwordMessage.style.color = '#c91c1c'; // Error red
+            passwordMessage.style.color = '#c91c1c';
         });
 }
 
 // =================================================================
-// --- DATA AND FORM FUNCTIONS ---
+// --- NEW (Phase 3): TAB SWITCHING FUNCTION ---
+// =================================================================
+function handleTabClick(event) {
+    const clickedTab = event.target;
+
+    // Remove 'active' from all tabs and panels
+    tabStatus.classList.remove('active');
+    tabCalendar.classList.remove('active');
+    panelStatus.classList.remove('active');
+    panelCalendar.classList.remove('active');
+
+    // Add 'active' to the clicked tab and its corresponding panel
+    if (clickedTab.id === 'tab-status') {
+        tabStatus.classList.add('active');
+        panelStatus.classList.add('active');
+    } else if (clickedTab.id === 'tab-calendar') {
+        tabCalendar.classList.add('active');
+        panelCalendar.classList.add('active');
+        // Tell the calendar to re-render, as it was hidden
+        if (calendar) {
+            calendar.render();
+        }
+    }
+}
+
+// =================================================================
+// --- NEW (Phase 3 & 4): CALENDAR FUNCTIONS ---
 // =================================================================
 
-// --- Finds and loads the doctor's data after they log in ---
+function initializeCalendar(uid) {
+    // Only initialize the calendar *once*
+    if (calendar) {
+        return;
+    }
+
+    calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'timeGridWeek', // A week view is best for bookings
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        editable: false, // We'll use clicks, not drag-and-drop
+        selectable: true, // Allows clicking on time slots
+        
+        // --- (Phase 4.1) Handle clicking on an empty date/time ---
+        dateClick: function(clickInfo) {
+            const patientName = prompt('Enter Patient Name:');
+            
+            if (patientName) {
+                // Calculate end time (default to 30 min appt)
+                const endDate = new Date(clickInfo.date.getTime() + 30 * 60000);
+
+                // Create the new appointment object
+                const newAppointment = {
+                    doctorId: uid, // Tag with the doctor's UID for security
+                    patientName: patientName,
+                    start: clickInfo.dateStr, // e.g., "2025-10-25T10:00:00"
+                    end: endDate.toISOString()
+                };
+
+                // Add it to Firebase
+                db.collection('appointments').add(newAppointment)
+                    .then(() => {
+                        console.log("Appointment added!");
+                    })
+                    .catch(error => {
+                        console.error("Error adding appointment: ", error);
+                        alert("Error: Could not create appointment.");
+                    });
+            }
+        },
+
+        // --- (Phase 4.4) Handle clicking on an *existing* event ---
+        eventClick: function(clickInfo) {
+            if (confirm(`Delete appointment for '${clickInfo.event.title}'?`)) {
+                
+                const eventId = clickInfo.event.id; // Get the document ID
+
+                // Delete it from Firebase
+                db.collection('appointments').doc(eventId).delete()
+                    .then(() => {
+                        console.log("Appointment deleted!");
+                    })
+                    .catch(error => {
+                        console.error("Error deleting appointment: ", error);
+                        alert("Error: Could not delete appointment.");
+                    });
+            }
+        }
+    });
+
+    calendar.render();
+
+    // --- (Phase 3.3) Start the real-time listener ---
+    // Detach any *old* listener first
+    if (appointmentsListener) {
+        appointmentsListener();
+    }
+    
+    // Listen for appointments that match this doctor's UID
+    appointmentsListener = db.collection('appointments')
+        .where('doctorId', '==', uid)
+        .onSnapshot(snapshot => {
+            
+            // Format the Firebase docs into FullCalendar event objects
+            const events = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id, // This is crucial for deleting!
+                    title: data.patientName,
+                    start: data.start,
+                    end: data.end
+                };
+            });
+
+            // --- (Phase 3.4) Update the calendar's events ---
+            if (calendar) {
+                calendar.setProp('events', events);
+            }
+        }, error => {
+            console.error("Error fetching appointments: ", error);
+        });
+}
+
+
+// =================================================================
+// --- STATUS PANEL FUNCTIONS (Mostly unchanged) ---
+// =================================================================
+
 function loadDoctorProfile(uid) {
     db.collection('doctors').where('authUID', '==', uid).get()
         .then(snapshot => {
@@ -152,33 +281,25 @@ function loadDoctorProfile(uid) {
                 auth.signOut();
                 return;
             }
-            
             snapshot.forEach(doc => {
                 const doctor = doc.data();
                 currentDoctorDocId = doc.id; 
-                
                 currentApptInput.value = doctor.currentAppointment || '';
                 nextApptInput.value = doctor.nextAppointment || '';
                 selectedStatus = doctor.status || '';
-                
                 updateStatusButtonUI();
             });
         })
-        .catch(error => {
-            console.error("Error fetching doctor profile: ", error);
-        });
+        .catch(error => console.error("Error fetching doctor profile: ", error));
 }
 
-// --- Handles clicks on the status buttons (same as before) ---
 function onStatusButtonClick(event) {
     const clickedButton = event.target.closest('button');
     if (!clickedButton) return;
-
     selectedStatus = clickedButton.dataset.status;
     updateStatusButtonUI();
 }
 
-// --- Helper function to update button styles ---
 function updateStatusButtonUI() {
     document.querySelectorAll('#status-buttons button').forEach(btn => {
         if (btn.dataset.status === selectedStatus) {
@@ -189,7 +310,6 @@ function updateStatusButtonUI() {
     });
 }
 
-// --- Handles the "Update Status" button click (MODIFIED) ---
 function onUpdateButtonClick() {
     if (!currentDoctorDocId) {
         showMessage('Error: No doctor profile loaded. Please refresh.', 'error');
@@ -200,22 +320,17 @@ function onUpdateButtonClick() {
         return;
     }
     
-    const newCurrentAppt = currentApptInput.value;
-    const newNextAppt = nextApptInput.value;
-    
     const updateData = {
         status: selectedStatus,
-        currentAppointment: newCurrentAppt,
-        nextAppointment: newNextAppt
+        currentAppointment: currentApptInput.value,
+        nextAppointment: nextApptInput.value
     };
     
     updateButton.disabled = true;
     updateButton.textContent = 'Updating...';
     
     db.collection('doctors').doc(currentDoctorDocId).update(updateData)
-        .then(() => {
-            showMessage('Status updated successfully!', 'success');
-        })
+        .then(() => showMessage('Status updated successfully!', 'success'))
         .catch(error => {
             console.error("Error updating document: ", error);
             showMessage('Error updating status. See console for details.', 'error');
@@ -226,15 +341,12 @@ function onUpdateButtonClick() {
         });
 }
 
-// --- Helper function to show success/error messages (same as before) ---
 function showMessage(message, type) {
     updateMessage.textContent = message;
     updateMessage.style.color = (type === 'error') ? '#c91c1c' : '#006421';
-    
-    setTimeout(() => {
-        updateMessage.textContent = '';
-    }, 3000);
+    setTimeout(() => { updateMessage.textContent = ''; }, 3000);
 }
+
 
 // =================================================================
 // --- STEP 6: Add Event Listeners ---
@@ -244,3 +356,7 @@ signOutButton.addEventListener('click', onSignOutClick);
 statusButtonsContainer.addEventListener('click', onStatusButtonClick);
 updateButton.addEventListener('click', onUpdateButtonClick);
 changePasswordButton.addEventListener('click', onChangePasswordClick);
+
+// --- NEW (Phase 3): Tab listeners ---
+tabStatus.addEventListener('click', handleTabClick);
+tabCalendar.addEventListener('click', handleTabClick);
