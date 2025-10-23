@@ -11,75 +11,175 @@ const firebaseConfig = {
 // STEP 2: Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-// STEP 3: Get a reference to the Firestore database
+// STEP 3: Get references to the new services (Auth and Firestore)
+const auth = firebase.auth();
 const db = firebase.firestore();
 
-// STEP 4: Get references to all our HTML elements
-const doctorSelect = document.getElementById('doctor-select');
+// STEP 4: Get references to ALL our HTML elements
+
+// --- Login elements ---
+const loginContainer = document.getElementById('login-container');
+const loginEmail = document.getElementById('login-email');
+const loginPassword = document.getElementById('login-password');
+const loginButton = document.getElementById('login-button');
+const loginMessage = document.getElementById('login-message');
+
+// --- Admin content elements ---
+const adminContent = document.getElementById('admin-content');
+const signOutButton = document.getElementById('sign-out-button');
 const statusButtonsContainer = document.getElementById('status-buttons');
 const currentApptInput = document.getElementById('current-appt');
 const nextApptInput = document.getElementById('next-appt');
 const updateButton = document.getElementById('update-button');
 const updateMessage = document.getElementById('update-message');
 
-// A variable to store all doctor data, so we can access it easily
-let doctorsData = {};
-// A variable to hold the status we've clicked on
+// --- NEW PASSWORD ELEMENTS ---
+const changePasswordButton = document.getElementById('change-password-button');
+const passwordMessage = document.getElementById('password-message');
+
+// STEP 5: Create global variables to store state
 let selectedStatus = '';
+let currentUser = null;
+let currentDoctorDocId = null; // This will store the doctor's *document ID* (e.g., "dr_smith")
 
-// --- FUNCTION 1: Fetch Doctors and Populate Dropdown ---
-function populateDoctorDropdown() {
-    db.collection('doctors').get().then(snapshot => {
+// =================================================================
+// --- MASTER AUTH FUNCTION (This is the "main" function) ---
+// =================================================================
+auth.onAuthStateChanged(user => {
+    if (user) {
+        // --- USER IS LOGGED IN ---
+        currentUser = user; // Save the user's data
         
-        // Clear the "Loading..." message
-        doctorSelect.innerHTML = '<option value="">-- Select a Doctor --</option>';
-        
-        snapshot.forEach(doc => {
-            const doctor = doc.data();
-            const doctorId = doc.id;
-            
-            // Store the doctor's data locally
-            doctorsData[doctorId] = doctor;
-            
-            // Add the doctor to the dropdown
-            const option = document.createElement('option');
-            option.value = doctorId;
-            option.textContent = doctor.displayName || 'Unnamed Doctor';
-            doctorSelect.appendChild(option);
-        });
-    }).catch(error => {
-        console.error("Error fetching doctors: ", error);
-        doctorSelect.innerHTML = '<option value="">Error loading doctors</option>';
-    });
-}
+        // Show the admin controls, hide the login form
+        adminContent.style.display = 'block';
+        loginContainer.style.display = 'none';
 
-// --- FUNCTION 2: Populate Form When a Doctor is Selected ---
-function onDoctorSelectChange() {
-    const selectedDoctorId = doctorSelect.value;
-    
-    // Clear the form if no doctor is selected
-    if (!selectedDoctorId) {
+        // Find the doctor document that belongs to this user
+        loadDoctorProfile(user.uid);
+        
+    } else {
+        // --- USER IS LOGGED OUT ---
+        currentUser = null;
+        currentDoctorDocId = null;
+
+        // Show the login form, hide the admin controls
+        adminContent.style.display = 'none';
+        loginContainer.style.display = 'block';
+
+        // Clear the form
         currentApptInput.value = '';
         nextApptInput.value = '';
         selectedStatus = '';
-        // Clear 'selected' class from all buttons
-        document.querySelectorAll('#status-buttons button').forEach(btn => {
-            btn.classList.remove('selected');
-        });
+    }
+});
+
+// =================================================================
+// --- AUTH FUNCTIONS (Login / Logout / Reset) ---
+// =================================================================
+
+// --- Handles the Login button click ---
+function onLoginClick() {
+    const email = loginEmail.value;
+    const password = loginPassword.value;
+
+    if (!email || !password) {
+        loginMessage.textContent = 'Please enter both email and password.';
         return;
     }
-    
-    // Get the data we stored earlier
-    const doctor = doctorsData[selectedDoctorId];
-    
-    // Fill in the form fields with this doctor's current data
-    currentApptInput.value = doctor.currentAppointment || '';
-    nextApptInput.value = doctor.nextAppointment || '';
-    
-    // Set the selected status
-    selectedStatus = doctor.status || '';
-    
-    // Update the button styles
+
+    loginMessage.textContent = 'Logging in...';
+
+    auth.signInWithEmailAndPassword(email, password)
+        .then(userCredential => {
+            // Success! The `onAuthStateChanged` function above
+            // will automatically handle hiding the login form.
+            loginMessage.textContent = '';
+            loginEmail.value = '';
+            loginPassword.value = '';
+        })
+        .catch(error => {
+            // Handle errors
+            console.error("Login Error:", error.message);
+            loginMessage.textContent = 'Error: ' + error.message;
+        });
+}
+
+// --- Handles the Sign Out button click ---
+function onSignOutClick() {
+    auth.signOut().catch(error => {
+        console.error("Sign Out Error:", error);
+    });
+}
+
+// --- Handles the "Change Password" button click ---
+function onChangePasswordClick() {
+    if (!currentUser) {
+        showMessage('You must be logged in to change your password.', 'error');
+        return;
+    }
+
+    const email = currentUser.email;
+    passwordMessage.textContent = 'Sending reset email...';
+
+    auth.sendPasswordResetEmail(email)
+        .then(() => {
+            passwordMessage.textContent = 'Success! Check your email inbox for a reset link.';
+            passwordMessage.style.color = '#006421'; // Success green
+            
+            // Clear the message after 7 seconds
+            setTimeout(() => {
+                passwordMessage.textContent = '';
+            }, 7000);
+        })
+        .catch(error => {
+            console.error("Password Reset Error:", error);
+            passwordMessage.textContent = 'Error: ' + error.message;
+            passwordMessage.style.color = '#c91c1c'; // Error red
+        });
+}
+
+// =================================================================
+// --- DATA AND FORM FUNCTIONS ---
+// =================================================================
+
+// --- Finds and loads the doctor's data after they log in ---
+function loadDoctorProfile(uid) {
+    db.collection('doctors').where('authUID', '==', uid).get()
+        .then(snapshot => {
+            if (snapshot.empty) {
+                console.error("No doctor document found for this user UID:", uid);
+                alert("Critical Error: Your user account is not linked to a doctor profile. Please contact the administrator.");
+                auth.signOut();
+                return;
+            }
+            
+            snapshot.forEach(doc => {
+                const doctor = doc.data();
+                currentDoctorDocId = doc.id; 
+                
+                currentApptInput.value = doctor.currentAppointment || '';
+                nextApptInput.value = doctor.nextAppointment || '';
+                selectedStatus = doctor.status || '';
+                
+                updateStatusButtonUI();
+            });
+        })
+        .catch(error => {
+            console.error("Error fetching doctor profile: ", error);
+        });
+}
+
+// --- Handles clicks on the status buttons (same as before) ---
+function onStatusButtonClick(event) {
+    const clickedButton = event.target.closest('button');
+    if (!clickedButton) return;
+
+    selectedStatus = clickedButton.dataset.status;
+    updateStatusButtonUI();
+}
+
+// --- Helper function to update button styles ---
+function updateStatusButtonUI() {
     document.querySelectorAll('#status-buttons button').forEach(btn => {
         if (btn.dataset.status === selectedStatus) {
             btn.classList.add('selected');
@@ -89,32 +189,10 @@ function onDoctorSelectChange() {
     });
 }
 
-// --- FUNCTION 3: Handle Clicks on Status Buttons ---
-function onStatusButtonClick(event) {
-    // We use event delegation: the listener is on the container
-    const clickedButton = event.target.closest('button');
-    
-    if (!clickedButton) return; // Didn't click a button
-
-    // Get the status from the button's 'data-status' attribute
-    selectedStatus = clickedButton.dataset.status;
-    
-    // Remove 'selected' from all buttons
-    document.querySelectorAll('#status-buttons button').forEach(btn => {
-        btn.classList.remove('selected');
-    });
-    
-    // Add 'selected' to the one we just clicked
-    clickedButton.classList.add('selected');
-}
-
-// --- FUNCTION 4: Handle the Main "Update" Button Click ---
+// --- Handles the "Update Status" button click (MODIFIED) ---
 function onUpdateButtonClick() {
-    const selectedDoctorId = doctorSelect.value;
-    
-    // --- Data Validation ---
-    if (!selectedDoctorId) {
-        showMessage('Please select a doctor first.', 'error');
+    if (!currentDoctorDocId) {
+        showMessage('Error: No doctor profile loaded. Please refresh.', 'error');
         return;
     }
     if (!selectedStatus) {
@@ -122,22 +200,19 @@ function onUpdateButtonClick() {
         return;
     }
     
-    // --- Get all values from the form ---
     const newCurrentAppt = currentApptInput.value;
     const newNextAppt = nextApptInput.value;
     
-    // Create the object of data to send to Firebase
     const updateData = {
         status: selectedStatus,
         currentAppointment: newCurrentAppt,
         nextAppointment: newNextAppt
     };
     
-    // --- Send the update to Firestore ---
-    updateButton.disabled = true; // Prevent double-clicks
+    updateButton.disabled = true;
     updateButton.textContent = 'Updating...';
     
-    db.collection('doctors').doc(selectedDoctorId).update(updateData)
+    db.collection('doctors').doc(currentDoctorDocId).update(updateData)
         .then(() => {
             showMessage('Status updated successfully!', 'success');
         })
@@ -146,30 +221,26 @@ function onUpdateButtonClick() {
             showMessage('Error updating status. See console for details.', 'error');
         })
         .finally(() => {
-            // Re-enable the button
             updateButton.disabled = false;
             updateButton.textContent = 'Update Status';
         });
 }
 
-// --- Helper function to show success/error messages ---
+// --- Helper function to show success/error messages (same as before) ---
 function showMessage(message, type) {
     updateMessage.textContent = message;
     updateMessage.style.color = (type === 'error') ? '#c91c1c' : '#006421';
     
-    // Clear the message after 3 seconds
     setTimeout(() => {
         updateMessage.textContent = '';
     }, 3000);
 }
 
-
-// --- STEP 5: Add Event Listeners ---
-
-// Run this function once the page is loaded
-document.addEventListener('DOMContentLoaded', populateDoctorDropdown);
-
-// Add listeners for our interactive elements
-doctorSelect.addEventListener('change', onDoctorSelectChange);
+// =================================================================
+// --- STEP 6: Add Event Listeners ---
+// =================================================================
+loginButton.addEventListener('click', onLoginClick);
+signOutButton.addEventListener('click', onSignOutClick);
 statusButtonsContainer.addEventListener('click', onStatusButtonClick);
 updateButton.addEventListener('click', onUpdateButtonClick);
+changePasswordButton.addEventListener('click', onChangePasswordClick);

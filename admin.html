@@ -63,44 +63,119 @@
             font-weight: bold;
             margin-top: 15px;
         }
+
+        /* --- --- */
+        #login-container {
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 25px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+        }
+        #login-container h2 {
+            margin-top: 0;
+        }
+        #login-container input {
+            width: 100%;
+            padding: 12px;
+            font-size: 1rem;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+            margin-bottom: 15px;
+        }
+        #login-container button {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        #login-message {
+            color: #c91c1c;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+        #sign-out-button {
+            background-color: #e53935;
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            float: right; /* Put it in the corner */
+            font-size: 0.9rem;
+        }
+        /* --- --- */
+		
+		/* --- NEW STYLES FOR PASSWORD BUTTON --- */
+		.admin-form button.secondary-button {
+			background-color: #6c757d; /* A neutral gray */
+			margin-top: 10px; /* Add some space above */
+		}
+		.admin-form button.secondary-button:hover {
+			background-color: #5a6268;
+		}
+		#password-message {
+			text-align: center;
+			font-size: 1.0rem;
+			font-weight: bold;
+		}
+		/* --- END NEW STYLES --- */
     </style>
 </head>
 <body>
 
-    <header>
-        <h1>Doctor Status Control</h1>
-    </header>
+    <div id="login-container">
+        <h2>Doctor Admin Login</h2>
+        <input type="email" id="login-email" placeholder="Email Address">
+        <input type="password" id="login-password" placeholder="Password">
+        <button id="login-button">Login</button>
+        <p id="login-message"></p>
+    </div>
 
-    <main>
-        <div class="admin-form">
-            
-            <label for="doctor-select">1. Select Doctor</label>
-            <select id="doctor-select">
-                <option value="">Loading doctors...</option>
-                </select>
+    <div id="admin-content" style="display: none;">
+        
+        <header>
+            <button id="sign-out-button">Sign Out</button>
+            <h1>Doctor Status Control</h1>
+        </header>
 
-            <label>2. Set Status</label>
-            <div class="status-buttons" id="status-buttons">
-                <button type="button" data-status="On Time">On Time</button>
-                <button type="button" data-status="15m Delay">15m Delay</button>
-                <button type="button" data-status="30m Delay">30m Delay</button>
-                <button type="button" data-status="Away">Away</button>
+        <main>
+            <div class="admin-form">
+                
+                <label>Set Status</label>
+                <div class="status-buttons" id="status-buttons">
+                    <button type="button" data-status="On Time">On Time</button>
+                    <button type="button" data-status="15m Delay">15m Delay</button>
+                    <button type="button" data-status="30m Delay">30m Delay</button>
+                    <button type="button" data-status="Away">Away</button>
+                </div>
+
+                <label for="current-appt">3. Current Appointment</label>
+                <input type="text" id="current-appt" placeholder="e.g., A-104 (11:00 AM)">
+
+                <label for="next-appt">4. Next Appointment</label>
+                <input type="text" id="next-appt" placeholder="e.g., A-105 (11:30 AM)">
+
+                <button id="update-button">Update Status</button>
+
+                <p id="update-message"></p>
+				
+				<button id="change-password-button" class="secondary-button">Change Password</button>
+				<p id="password-message"></p>
+
             </div>
+        </main>
+    </div> <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
-            <label for="current-appt">3. Current Appointment</label>
-            <input type="text" id="current-appt" placeholder="e.g., A-104 (11:00 AM)">
-
-            <label for="next-appt">4. Next Appointment</label>
-            <input type="text" id="next-appt" placeholder="e.g., A-105 (11:30 AM)">
-
-            <button id="update-button">Update Status</button>
-
-            <p id="update-message"></p>
-
-        </div>
-    </main>
-
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     
     <script src="admin.js"></script>
