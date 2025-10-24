@@ -14,7 +14,8 @@ firebase.initializeApp(firebaseConfig);
 // STEP 3: Get references to the services
 const auth = firebase.auth();
 const db = firebase.firestore();
-const MEXICO_TIMEZONE = "America/Mexico_City"; // Define timezone constant
+
+const MEXICO_TIMEZONE = "America/Mexico_City";
 
 // STEP 4: Get references to ALL our HTML elements
 
@@ -28,34 +29,29 @@ const loginMessage = document.getElementById('login-message');
 // --- Admin content elements ---
 const adminContent = document.getElementById('admin-content');
 const signOutButton = document.getElementById('sign-out-button');
+const updateButton = document.getElementById('update-button');
+const updateMessage = document.getElementById('update-message');
 const changePasswordButton = document.getElementById('change-password-button');
 const passwordMessage = document.getElementById('password-message');
 
 // --- Status Panel elements ---
-const activeAppointmentDisplay = document.getElementById('active-appointment-display');
-const displayPatientName = document.getElementById('display-patient-name');
-const displayPatientPhone = document.getElementById('display-patient-phone');
-const displayApptTime = document.getElementById('display-appt-time');
-const displayApptDuration = document.getElementById('display-appt-duration');
-const noUpcomingMessage = document.getElementById('no-upcoming-message');
-const goAheadButton = document.getElementById('go-ahead-button');
-const finishedButton = document.getElementById('finished-button');
+const statusButtonsContainer = document.getElementById('status-buttons');
 
-// --- Tab elements ---
+// --- NEW (Phase 3): Tab elements ---
 const tabStatus = document.getElementById('tab-status');
 const tabCalendar = document.getElementById('tab-calendar');
 const panelStatus = document.getElementById('panel-status');
 const panelCalendar = document.getElementById('panel-calendar');
 
-// --- Calendar element ---
+// --- NEW (Phase 3): Calendar element ---
 const calendarEl = document.getElementById('calendar-container');
 
 // STEP 5: Create global variables to store state
+let selectedStatus = '';
 let currentUser = null;
-let currentDoctorDocId = null; // Stores the Firestore Doc ID for the doctor's profile
-let calendar = null;
-let appointmentsListener = null;
-let activeAppointment = null; // Stores { id: '...', patientName: '...', ... }
+let currentDoctorDocId = null;
+let calendar = null; // This will hold the FullCalendar object
+let appointmentsListener = null; // This will hold our Firebase listener
 
 // =================================================================
 // --- MASTER AUTH FUNCTION ---
@@ -67,51 +63,38 @@ auth.onAuthStateChanged(user => {
         adminContent.style.display = 'block';
         loginContainer.style.display = 'none';
 
-        // Find the doctor's Firestore document ID once
-        findDoctorDocumentId(user.uid).then(() => {
-            // Only load dependent data *after* finding the doc ID
-            if (currentDoctorDocId) {
-                initializeCalendar(user.uid);
-                loadAndDisplayActiveAppointment(); // Load appointment for status tab
-            } else {
-                 // Handle case where doctor doc wasn't found (error logged in findDoctorDocumentId)
-                 alert("Critical Error: Could not link your login to a doctor profile. Please contact admin.");
-                 auth.signOut();
-            }
-        });
-
+        // Load the two main data components
+        loadDoctorProfile(user.uid);
+        initializeCalendar(user.uid); // NEW
+        
     } else {
         // --- USER IS LOGGED OUT ---
         currentUser = null;
         currentDoctorDocId = null;
-        activeAppointment = null;
         adminContent.style.display = 'none';
         loginContainer.style.display = 'block';
 
-        // --- Cleanup ---
+        // --- NEW (Phase 3): Cleanup ---
+        // Detach the Firebase listener to prevent memory leaks
         if (appointmentsListener) {
-            appointmentsListener();
+            appointmentsListener(); // This stops the listener
             appointmentsListener = null;
         }
+        // Destroy the calendar instance
         if (calendar) {
             calendar.destroy();
             calendar = null;
         }
-        // Clear status panel display
-        if(displayPatientName) displayPatientName.textContent = '---';
-        if(displayPatientPhone) displayPatientPhone.textContent = '---';
-        if(displayApptTime) displayApptTime.textContent = '---';
-        if(displayApptDuration) displayApptDuration.textContent = '---';
-        if(activeAppointmentDisplay) activeAppointmentDisplay.style.display = 'none';
-        if(noUpcomingMessage) noUpcomingMessage.style.display = 'block';
-        if(goAheadButton) goAheadButton.disabled = true;
-        if(finishedButton) finishedButton.disabled = true;
+
+        // Clear the status form
+        selectedStatus = '';
     }
 });
 
 // =================================================================
 // --- AUTH FUNCTIONS (Login / Logout / Reset) ---
 // =================================================================
+// (These functions are all unchanged)
 function onLoginClick() {
     const email = loginEmail.value;
     const password = loginPassword.value;
@@ -138,13 +121,11 @@ function onSignOutClick() {
 
 function onChangePasswordClick() {
     if (!currentUser) {
-        Swal.fire('Error!', 'You must be logged in to change your password.', 'error'); // Using Swal for consistency
+        showMessage('You must be logged in to change your password.', 'error');
         return;
     }
     const email = currentUser.email;
-    passwordMessage.textContent = 'Sending reset email...'; // Use the dedicated message area
-    passwordMessage.style.color = '#555'; // Neutral color
-
+    passwordMessage.textContent = 'Sending reset email...';
     auth.sendPasswordResetEmail(email)
         .then(() => {
             passwordMessage.textContent = 'Success! Check your email inbox for a reset link.';
@@ -158,33 +139,8 @@ function onChangePasswordClick() {
         });
 }
 
-
 // =================================================================
-// --- Helper: Find Doctor's Firestore Document ID ---
-// =================================================================
-async function findDoctorDocumentId(uid) {
-    if (!uid) return;
-    try {
-        const doctorQuery = await db.collection("doctors")
-                                    .where("authUID", "==", uid)
-                                    .limit(1)
-                                    .get();
-        if (!doctorQuery.empty) {
-            currentDoctorDocId = doctorQuery.docs[0].id; // Store the Firestore document ID
-            console.log("Found doctor document ID:", currentDoctorDocId);
-        } else {
-            console.error(`Could not find doctor document for authUID: ${uid}`);
-            currentDoctorDocId = null;
-        }
-    } catch (error) {
-        console.error("Error finding doctor document:", error);
-        currentDoctorDocId = null;
-    }
-}
-
-
-// =================================================================
-// --- TAB SWITCHING FUNCTION ---
+// --- NEW (Phase 3): TAB SWITCHING FUNCTION ---
 // =================================================================
 function handleTabClick(event) {
     const clickedTab = event.target;
@@ -199,44 +155,51 @@ function handleTabClick(event) {
     if (clickedTab.id === 'tab-status') {
         tabStatus.classList.add('active');
         panelStatus.classList.add('active');
-        loadAndDisplayActiveAppointment(); // <<< Load data when switching TO status tab
     } else if (clickedTab.id === 'tab-calendar') {
         tabCalendar.classList.add('active');
         panelCalendar.classList.add('active');
+        // Tell the calendar to re-render, as it was hidden
         if (calendar) {
-            calendar.render(); // Re-render calendar if it was hidden
+            calendar.render();
         }
     }
 }
 
 // =================================================================
-// --- CALENDAR FUNCTIONS ---
+// --- NEW (Phase 3 & 4): CALENDAR FUNCTIONS ---
 // =================================================================
+
 function initializeCalendar(uid) {
-    if (calendar) return; // Initialize only once
+    // Only initialize the calendar *once*
+    if (calendar) {
+        return;
+    }
 
     calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'timeGridWeek',
+        initialView: 'timeGridWeek', // A week view is best for bookings
         headerToolbar: {
             left: 'prev,next today',
             center: 'title',
             right: 'dayGridMonth,timeGridWeek,timeGridDay'
         },
-        editable: false,
-        selectable: true,
-        timeZone: MEXICO_TIMEZONE, // Set calendar timezone
-
-        // --- dateClick using SweetAlert2 ---
+        editable: false, // We'll use clicks, not drag-and-drop
+        selectable: true, // Allows clicking on time slots
+        
+        // --- NEW dateClick using SweetAlert2 ---
         dateClick: function(clickInfo) {
+          // Get the start time from the click
           const startDate = clickInfo.date;
+          // Format start time for display in the modal title
           const startTimeFormatted = startDate.toLocaleTimeString("en-US", {
-              hour: "2-digit", minute: "2-digit", hour12: true, timeZone: MEXICO_TIMEZONE,
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+              timeZone: MEXICO_TIMEZONE,
             });
 
           Swal.fire({
             title: `Book Appointment at ${startTimeFormatted}`,
-            width: '600px',
-             html: `
+            html: `
               <div>
                 <span class="swal2-label" for="swal-input-name">Patient Name:</span>
                 <input id="swal-input-name" class="swal2-input" placeholder="Enter patient name">
@@ -254,79 +217,74 @@ function initializeCalendar(uid) {
               </div>
             `,
             confirmButtonText: 'Book Appointment',
-            focusConfirm: false,
+            focusConfirm: false, // Prevents closing on Enter key initially
             didOpen: () => {
+              // Add interactivity to duration buttons
               const buttons = document.querySelectorAll('#swal-duration-buttons .duration-button');
               buttons.forEach(button => {
                 button.addEventListener('click', () => {
-                  buttons.forEach(btn => btn.style.border = 'none');
-                  button.style.border = '2px solid blue';
+                  // Deselect others, select this one visually (optional styling)
+                  buttons.forEach(btn => btn.style.border = 'none'); // Example reset
+                  button.style.border = '2px solid blue'; // Example selection
+                  // Store selected duration on a common element (e.g., the container)
                   document.getElementById('swal-duration-buttons').dataset.selectedDuration = button.dataset.duration;
                 });
               });
+              // Set 30min as default selection
                const defaultButton = document.querySelector('#swal-duration-buttons .duration-button[data-duration="30"]');
-               if(defaultButton) defaultButton.click();
+               if(defaultButton) {
+                   defaultButton.click(); // Simulate click to select and store value
+               }
             },
             preConfirm: () => {
+              // --- Validation before closing ---
               const name = document.getElementById('swal-input-name').value;
               const phone = document.getElementById('swal-input-phone').value;
               const selectedDurationMinutes = document.getElementById('swal-duration-buttons').dataset.selectedDuration;
-              const phoneRegex = /^\d{10}$/;
+              const phoneRegex = /^\d{10}$/; // 10 digits exactly
 
-              if (!name) { Swal.showValidationMessage(`Please enter the patient's name`); return false; }
-              if (!phone) { Swal.showValidationMessage(`Please enter the patient's phone number`); return false; }
-              if (!phoneRegex.test(phone)) { Swal.showValidationMessage(`Phone number must be exactly 10 digits`); return false; }
-              if (!selectedDurationMinutes) { Swal.showValidationMessage(`Please select an appointment duration`); return false; }
+              if (!name) {
+                Swal.showValidationMessage(`Please enter the patient's name`);
+                return false; // Prevent closing
+              }
+              if (!phone) {
+                Swal.showValidationMessage(`Please enter the patient's phone number`);
+                return false;
+              }
+              if (!phoneRegex.test(phone)) {
+                 Swal.showValidationMessage(`Phone number must be exactly 10 digits`);
+                 return false;
+              }
+              if (!selectedDurationMinutes) {
+                 Swal.showValidationMessage(`Please select an appointment duration`);
+                 return false;
+              }
 
-              return { name: name, phone: phone, duration: parseInt(selectedDurationMinutes, 10) };
+              // Return the collected data if validation passes
+              return {
+                name: name,
+                phone: phone,
+                duration: parseInt(selectedDurationMinutes, 10) // Convert to number
+              };
             }
-          }).then(async (result) => { // Added async for overlap check
+          }).then((result) => {
+            // --- Handle Submission ---
             if (result.isConfirmed && result.value) {
               const formData = result.value;
-              const newStartTime = startDate;
-              const newEndTime = new Date(newStartTime.getTime() + formData.duration * 60000);
 
-              // --- Overlap Check ---
-              console.log("Checking for overlapping appointments...");
-              try {
-                const overlapQuery = await db.collection("appointments")
-                  .where("doctorId", "==", uid)
-                  .where("start", "<", newEndTime.toISOString()) // Broad filter
-                  .orderBy("start", "asc")
-                  .get();
+              // Calculate end time based on selected duration
+              const endDate = new Date(startDate.getTime() + formData.duration * 60000); // duration in minutes
 
-                let isOverlapping = false;
-                overlapQuery.forEach(doc => {
-                    const existingAppt = doc.data();
-                    const existingStart = new Date(existingAppt.start).getTime();
-                    const existingEnd = new Date(existingAppt.end).getTime();
-                    const newStart = newStartTime.getTime();
-                    const newEnd = newEndTime.getTime();
-                    if (newStart < existingEnd && existingStart < newEnd) {
-                        isOverlapping = true;
-                    }
-                });
-
-                if (isOverlapping) {
-                  Swal.fire('Error!', 'This time slot overlaps with an existing appointment.', 'warning');
-                  return;
-                }
-              } catch (error) {
-                  console.error("Error checking for overlap:", error);
-                  Swal.fire('Error!', 'Could not verify appointment slot availability.', 'error');
-                  return;
-              }
-              // --- END Overlap Check ---
-
-              console.log("No overlap found. Creating appointment...");
+              // Create the new appointment object
               const newAppointment = {
-                  doctorId: uid,
+                  doctorId: uid, // Use the uid passed to initializeCalendar
                   patientName: formData.name,
                   patientPhone: formData.phone,
-                  start: newStartTime.toISOString(),
-                  end: newEndTime.toISOString()
+                  start: startDate.toISOString(), // Use ISO string for consistency
+                  end: endDate.toISOString()
               };
 
+              // Add it to Firebase
               db.collection('appointments').add(newAppointment)
                   .then(() => {
                       console.log("Appointment added!");
@@ -334,203 +292,152 @@ function initializeCalendar(uid) {
                   })
                   .catch(error => {
                       console.error("Error adding appointment: ", error);
-                      Swal.fire('Error!', 'Could not create appointment.', 'error');
+                      Swal.fire('Error!', 'Could not create appointment. Please try again.', 'error');
                   });
             } else {
               console.log("Appointment booking cancelled.");
             }
-          });
-        }, // End dateClick
+          }); // End Swal.fire().then()
+        }, // End dateClick function
 
-        // --- eventClick for Deleting ---
+        // --- (Phase 4.4) Handle clicking on an *existing* event ---
         eventClick: function(clickInfo) {
-            Swal.fire({ // Use SweetAlert for confirmation
-                title: 'Delete Appointment?',
-                text: `Are you sure you want to delete the appointment for '${clickInfo.event.title}'?`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Yes, delete it!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    const eventId = clickInfo.event.id;
-                    db.collection('appointments').doc(eventId).delete()
-                        .then(() => {
-                            console.log("Appointment deleted!");
-                            Swal.fire('Deleted!', 'Appointment has been deleted.', 'success');
-                        })
-                        .catch(error => {
-                            console.error("Error deleting appointment: ", error);
-                            Swal.fire('Error!', 'Could not delete appointment.', 'error');
-                        });
-                }
-            });
-        } // End eventClick
-    }); // End new FullCalendar.Calendar
+            if (confirm(`Delete appointment for '${clickInfo.event.title}'?`)) {
+                
+                const eventId = clickInfo.event.id; // Get the document ID
+
+                // Delete it from Firebase
+                db.collection('appointments').doc(eventId).delete()
+                    .then(() => {
+                        console.log("Appointment deleted!");
+                    })
+                    .catch(error => {
+                        console.error("Error deleting appointment: ", error);
+                        alert("Error: Could not delete appointment.");
+                    });
+            }
+        }
+    });
 
     calendar.render();
 
-    // --- Start the real-time listener for appointments ---
-    if (appointmentsListener) appointmentsListener(); // Detach old listener if exists
-
+    // --- (Phase 3.3) Start the real-time listener ---
+    // Detach any *old* listener first
+    if (appointmentsListener) {
+        appointmentsListener();
+    }
+    
+    // Listen for appointments that match this doctor's UID
     appointmentsListener = db.collection('appointments')
         .where('doctorId', '==', uid)
         .onSnapshot(snapshot => {
+            
+            // Format the Firebase docs into FullCalendar event objects
             const events = snapshot.docs.map(doc => {
                 const data = doc.data();
-                // Basic check for valid data before creating event object
-                if (data.patientName && data.start && data.end) {
-                  return {
-                      id: doc.id,
-                      title: data.patientName,
-                      start: data.start,
-                      end: data.end
-                  };
-                } else {
-                  console.warn("Skipping appointment with missing data:", doc.id, data);
-                  return null; // Skip invalid entries
-                }
-            }).filter(event => event !== null); // Filter out nulls
+                return {
+                    id: doc.id, // This is crucial for deleting!
+                    title: data.patientName,
+                    start: data.start,
+                    end: data.end
+                };
+            });
 
+            // --- (Phase 3.4) Update the calendar's events ---
             if (calendar) {
-                calendar.setOption('events', events); // Correct method to update events
+                calendar.setOption('events', events);
             }
         }, error => {
             console.error("Error fetching appointments: ", error);
         });
-} // End initializeCalendar
-
-
-// =================================================================
-// --- Load and Display Active Appointment for Status Tab ---
-// =================================================================
-async function loadAndDisplayActiveAppointment() {
-    if (!currentUser) {
-        console.log("loadAndDisplayActiveAppointment: No current user.");
-        return;
-     }
-
-    console.log("Loading active appointment for doctor:", currentUser.uid);
-    activeAppointment = null; // Reset
-    noUpcomingMessage.style.display = 'none';
-    activeAppointmentDisplay.style.display = 'block';
-
-    // Clear previous values immediately
-    displayPatientName.textContent = '---';
-    displayPatientPhone.textContent = '---';
-    displayApptTime.textContent = '---';
-    displayApptDuration.textContent = '---';
-    goAheadButton.disabled = true; // Disable buttons until data is loaded
-    finishedButton.disabled = true;
-
-    try {
-        // --- REVISED: Get today's date range in Mexico City ---
-        const now = new Date(); // Current moment
-        const todayDateStr = now.toLocaleTimeString("en-CA", { timeZone: MEXICO_TIMEZONE }).split(',')[0]; // Format: YYYY-MM-DD
-        const year = parseInt(todayDateStr.substring(0, 4), 10);
-        const month = parseInt(todayDateStr.substring(5, 7), 10) - 1; // Month is 0-indexed
-        const day = parseInt(todayDateStr.substring(8, 10), 10);
-        const todayStartLocal = new Date(year, month, day, 0, 0, 0);
-        const todayEndLocal = new Date(year, month, day + 1, 0, 0, 0);
-        const todayStartQueryISO = todayStartLocal.toISOString();
-        const todayEndQueryISO = todayEndLocal.toISOString();
-        // --- END REVISED DATE RANGE ---
-
-        console.log(`Querying appointments between (ISO): ${todayStartQueryISO} and ${todayEndQueryISO}`);
-
-        // Query appointments for today
-        const apptSnapshot = await db.collection("appointments")
-            .where("doctorId", "==", currentUser.uid)
-            .where("start", ">=", todayStartQueryISO)
-            .where("start", "<", todayEndQueryISO)
-            .orderBy("start", "asc")
-            .get();
-
-        console.log(`Query finished. Found ${apptSnapshot.size} appointments for today.`);
-
-
-        let foundActive = false;
-        const nowTimestamp = Date.now();
-
-        // Find the first appointment that hasn't finished
-        for (const doc of apptSnapshot.docs) {
-            const appt = { id: doc.id, ...doc.data() };
-            const startTime = appt.start ? new Date(appt.start).getTime() : NaN;
-            const endTime = appt.end ? new Date(appt.end).getTime() : NaN;
-
-            console.log(`Checking appointment: ${appt.patientName}, Start: ${appt.start}, End: ${appt.end}`);
-            console.log(`   EndTimeMs: ${endTime}, NowMs: ${nowTimestamp}`);
-
-            // --- USE CONDITION DIRECTLY IN IF ---
-            if (!isNaN(endTime) && endTime > nowTimestamp) { // Simplified check
-                console.log("   >>> INSIDE IF BLOCK - Condition (endTime > nowTimestamp) was TRUE.");
-                activeAppointment = appt;
-                foundActive = true;
-                break; // Stop after finding the first one
-            } else {
-                 console.log(`   Condition (endTime > nowTimestamp) evaluated as FALSE.`);
-                 console.log("   Appointment has already finished or has invalid end time (Skipping 'if' block).");
-            }
-             // Basic 'if(true)' test - can remove later
-            if (true) { console.log("   DEBUG: Basic 'if(true)' block executed."); }
-
-        } // End of for...of loop
-
-        console.log("Loop finished. foundActive:", foundActive, "activeAppointment:", activeAppointment);
-
-        // Update the display
-        if (foundActive && activeAppointment && activeAppointment.start && activeAppointment.end) {
-            console.log("Updating display with active appointment details.");
-            const startTime = new Date(activeAppointment.start);
-            const endTime = new Date(activeAppointment.end);
-            const durationMs = endTime.getTime() - startTime.getTime();
-            const durationMinutes = Math.round(durationMs / 60000);
-
-            displayPatientName.textContent = activeAppointment.patientName || 'N/A';
-            displayPatientPhone.textContent = activeAppointment.patientPhone || 'N/A';
-            displayApptTime.textContent = startTime.toLocaleTimeString("en-US", {
-                hour: "2-digit", minute: "2-digit", hour12: true, timeZone: MEXICO_TIMEZONE
-            });
-            displayApptDuration.textContent = `${durationMinutes} minutes`;
-
-            // Reset button state (will be refined in next step based on doctor status)
-            goAheadButton.disabled = false;
-            finishedButton.disabled = true;
-
-        } else {
-            console.log("No current or upcoming appointments found for today. Hiding details, showing message.");
-            activeAppointment = null; // Ensure it's nullified
-            activeAppointmentDisplay.style.display = 'none';
-            noUpcomingMessage.style.display = 'block';
-            goAheadButton.disabled = true;
-            finishedButton.disabled = true;
-        }
-
-    } catch (error) {
-        console.error("Error loading active appointment:", error);
-        // Display error state
-        displayPatientName.textContent = 'Error';
-        displayPatientPhone.textContent = 'Error';
-        displayApptTime.textContent = 'Error';
-        displayApptDuration.textContent = 'Error';
-        activeAppointmentDisplay.style.display = 'block'; // Ensure box is visible to show error
-        noUpcomingMessage.style.display = 'none';
-        goAheadButton.disabled = true;
-        finishedButton.disabled = true;
-    }
 }
 
 
 // =================================================================
-// --- EVENT LISTENERS ---
+// --- STATUS PANEL FUNCTIONS (Mostly unchanged) ---
+// =================================================================
+
+function loadDoctorProfile(uid) {
+    db.collection('doctors').where('authUID', '==', uid).get()
+        .then(snapshot => {
+            if (snapshot.empty) {
+                console.error("No doctor document found for this user UID:", uid);
+                alert("Critical Error: Your user account is not linked to a doctor profile. Please contact the administrator.");
+                auth.signOut();
+                return;
+            }
+            snapshot.forEach(doc => {
+                const doctor = doc.data();
+                currentDoctorDocId = doc.id; 
+                selectedStatus = doctor.status || '';
+                updateStatusButtonUI();
+            });
+        })
+        .catch(error => console.error("Error fetching doctor profile: ", error));
+}
+
+function onStatusButtonClick(event) {
+    const clickedButton = event.target.closest('button');
+    if (!clickedButton) return;
+    selectedStatus = clickedButton.dataset.status;
+    updateStatusButtonUI();
+}
+
+function updateStatusButtonUI() {
+    document.querySelectorAll('#status-buttons button').forEach(btn => {
+        if (btn.dataset.status === selectedStatus) {
+            btn.classList.add('selected');
+        } else {
+            btn.classList.remove('selected');
+        }
+    });
+}
+
+function onUpdateButtonClick() {
+    if (!currentDoctorDocId) {
+        showMessage('Error: No doctor profile loaded. Please refresh.', 'error');
+        return;
+    }
+    if (!selectedStatus) {
+        showMessage('Please select a status.', 'error');
+        return;
+    }
+    
+    const updateData = {
+        status: selectedStatus
+    };
+    
+    updateButton.disabled = true;
+    updateButton.textContent = 'Updating...';
+    
+    db.collection('doctors').doc(currentDoctorDocId).update(updateData)
+        .then(() => showMessage('Status updated successfully!', 'success'))
+        .catch(error => {
+            console.error("Error updating document: ", error);
+            showMessage('Error updating status. See console for details.', 'error');
+        })
+        .finally(() => {
+            updateButton.disabled = false;
+            updateButton.textContent = 'Update Status';
+        });
+}
+
+function showMessage(message, type) {
+    updateMessage.textContent = message;
+    updateMessage.style.color = (type === 'error') ? '#c91c1c' : '#006421';
+    setTimeout(() => { updateMessage.textContent = ''; }, 3000);
+}
+
+
+// =================================================================
+// --- STEP 6: Add Event Listeners ---
 // =================================================================
 loginButton.addEventListener('click', onLoginClick);
 signOutButton.addEventListener('click', onSignOutClick);
+statusButtonsContainer.addEventListener('click', onStatusButtonClick);
+updateButton.addEventListener('click', onUpdateButtonClick);
 changePasswordButton.addEventListener('click', onChangePasswordClick);
+
+// --- NEW (Phase 3): Tab listeners ---
 tabStatus.addEventListener('click', handleTabClick);
 tabCalendar.addEventListener('click', handleTabClick);
-
-// --- TODO: Add listeners for goAheadButton and finishedButton in the next step ---
-// goAheadButton.addEventListener('click', onGoAheadClick);
-// finishedButton.addEventListener('click', onFinishedClick);
