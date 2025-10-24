@@ -239,13 +239,21 @@
             <div id="panel-status" class="tab-panel active">
                 <div class="admin-form">
                     
-                    <label>Set Status</label>
-                    <div class="status-buttons" id="status-buttons">
-                        <button type="button" data-status="On Time">On Time</button>
-                        <button type="button" data-status="15m Delay">15m Delay</button>
-                        <button type="button" data-status="30m Delay">30m Delay</button>
-                        <button type="button" data-status="Away">Away</button>
-                    </div>
+                    <div id="active-appointment-display" style="border: 1px solid #ccc; padding: 15px; border-radius: 5px; background-color: #f0f2f5; margin-bottom: 20px;">
+					<h3 style="margin-top: 0; text-align: center;">Next Up / In Progress</h3>
+					<p><strong>Patient:</strong> <span id="display-patient-name">---</span></p>
+					<p><strong>Phone:</strong> <span id="display-patient-phone">---</span></p>
+					<p><strong>Time:</strong> <span id="display-appt-time">---</span></p>
+					<p><strong>Duration:</strong> <span id="display-appt-duration">---</span></p>
+					<p id="no-upcoming-message" style="text-align: center; color: #777; display: none;">No upcoming appointments for today.</p>
+				</div>
+				```
+				
+				<div style="display: flex; gap: 10px; margin-bottom: 15px;">
+					<button id="go-ahead-button" style="flex-grow: 1; background-color: #28a745; border-color: #28a745;">Go Ahead</button>
+					<button id="finished-button" style="flex-grow: 1; background-color: #dc3545; border-color: #dc3545;" disabled>Finished</button>
+				</div>
+        ```
 
                     <button id="update-button">Update Status</button>
                     <p id="update-message"></p>
