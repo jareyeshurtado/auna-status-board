@@ -15,6 +15,8 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+const MEXICO_TIMEZONE = "America/Mexico_City";
+
 // STEP 4: Get references to ALL our HTML elements
 
 // --- Login elements ---
@@ -183,61 +185,120 @@ function initializeCalendar(uid) {
         editable: false, // We'll use clicks, not drag-and-drop
         selectable: true, // Allows clicking on time slots
         
-        // --- (Phase 4.1) Handle clicking on an empty date/time ---
+        // --- NEW dateClick using SweetAlert2 ---
         dateClick: function(clickInfo) {
-            
-            const patientName = prompt('Enter Patient Name:');
-            
-            // 1. Check if they entered a name
-            if (!patientName) {
-                console.log("Appointment creation cancelled.");
-                return; // Stop if no name
-            }
+          // Get the start time from the click
+          const startDate = clickInfo.date;
+          // Format start time for display in the modal title
+          const startTimeFormatted = startDate.toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+              timeZone: MEXICO_TIMEZONE,
+            });
 
-            // --- 2. NEW Phone Validation Loop ---
-            
-            // This is our validation rule:
-            // ^\d{10}$ means "Must start (^), have 10 digits (\d{10}), and then end ($)"
-            const phoneRegex = /^\d{10}$/; 
-            let patientPhone = prompt('Enter Patient Phone Number (10 digits exactly):');
+          Swal.fire({
+            title: `Book Appointment at ${startTimeFormatted}`,
+            html: `
+              <div>
+                <span class="swal2-label" for="swal-input-name">Patient Name:</span>
+                <input id="swal-input-name" class="swal2-input" placeholder="Enter patient name">
 
-            // Keep looping as long as the input is NOT valid
-            while (patientPhone !== null && !phoneRegex.test(patientPhone)) {
-                // Show an error and ask again
-                alert("Invalid phone number. Please enter 10 digits only (e.g., 1234567890).");
-                patientPhone = prompt('Enter Patient Phone Number (10 digits exactly):');
-            }
+                <span class="swal2-label" for="swal-input-phone">Phone Number (10 digits):</span>
+                <input id="swal-input-phone" class="swal2-input" placeholder="Enter 10-digit phone number" type="tel">
 
-            // 3. Check if they clicked "Cancel" on the phone prompt
-            if (patientPhone === null) {
-                alert("Appointment cancelled.");
-                return; // Stop if they cancelled
-            }
-
-            // --- End of Validation Loop ---
-            // If we get here, patientPhone is valid!
-
-            // 4. Calculate end time and create the object
-            const endDate = new Date(clickInfo.date.getTime() + 30 * 60000);
-
-            const newAppointment = {
-                doctorId: uid,
-                patientName: patientName,
-                patientPhone: patientPhone, // This is now a validated 10-digit number
-                start: clickInfo.dateStr,
-                end: endDate.toISOString()
-            };
-
-            // 5. Add it to Firebase
-            db.collection('appointments').add(newAppointment)
-                .then(() => {
-                    console.log("Appointment added!");
-                })
-                .catch(error => {
-                    console.error("Error adding appointment: ", error);
-                    alert("Error: Could not create appointment.");
+                <span class="swal2-label">Appointment Duration:</span>
+                <div id="swal-duration-buttons">
+                  <button class="swal2-confirm swal2-styled duration-button" data-duration="30">30 min</button>
+                  <button class="swal2-confirm swal2-styled duration-button" data-duration="45">45 min</button>
+                  <button class="swal2-confirm swal2-styled duration-button" data-duration="60">1 hour</button>
+                  <button class="swal2-confirm swal2-styled duration-button" data-duration="90">1:30</button>
+                </div>
+              </div>
+            `,
+            confirmButtonText: 'Book Appointment',
+            focusConfirm: false, // Prevents closing on Enter key initially
+            didOpen: () => {
+              // Add interactivity to duration buttons
+              const buttons = document.querySelectorAll('#swal-duration-buttons .duration-button');
+              buttons.forEach(button => {
+                button.addEventListener('click', () => {
+                  // Deselect others, select this one visually (optional styling)
+                  buttons.forEach(btn => btn.style.border = 'none'); // Example reset
+                  button.style.border = '2px solid blue'; // Example selection
+                  // Store selected duration on a common element (e.g., the container)
+                  document.getElementById('swal-duration-buttons').dataset.selectedDuration = button.dataset.duration;
                 });
-        },
+              });
+              // Set 30min as default selection
+               const defaultButton = document.querySelector('#swal-duration-buttons .duration-button[data-duration="30"]');
+               if(defaultButton) {
+                   defaultButton.click(); // Simulate click to select and store value
+               }
+            },
+            preConfirm: () => {
+              // --- Validation before closing ---
+              const name = document.getElementById('swal-input-name').value;
+              const phone = document.getElementById('swal-input-phone').value;
+              const selectedDurationMinutes = document.getElementById('swal-duration-buttons').dataset.selectedDuration;
+              const phoneRegex = /^\d{10}$/; // 10 digits exactly
+
+              if (!name) {
+                Swal.showValidationMessage(`Please enter the patient's name`);
+                return false; // Prevent closing
+              }
+              if (!phone) {
+                Swal.showValidationMessage(`Please enter the patient's phone number`);
+                return false;
+              }
+              if (!phoneRegex.test(phone)) {
+                 Swal.showValidationMessage(`Phone number must be exactly 10 digits`);
+                 return false;
+              }
+              if (!selectedDurationMinutes) {
+                 Swal.showValidationMessage(`Please select an appointment duration`);
+                 return false;
+              }
+
+              // Return the collected data if validation passes
+              return {
+                name: name,
+                phone: phone,
+                duration: parseInt(selectedDurationMinutes, 10) // Convert to number
+              };
+            }
+          }).then((result) => {
+            // --- Handle Submission ---
+            if (result.isConfirmed && result.value) {
+              const formData = result.value;
+
+              // Calculate end time based on selected duration
+              const endDate = new Date(startDate.getTime() + formData.duration * 60000); // duration in minutes
+
+              // Create the new appointment object
+              const newAppointment = {
+                  doctorId: uid, // Use the uid passed to initializeCalendar
+                  patientName: formData.name,
+                  patientPhone: formData.phone,
+                  start: startDate.toISOString(), // Use ISO string for consistency
+                  end: endDate.toISOString()
+              };
+
+              // Add it to Firebase
+              db.collection('appointments').add(newAppointment)
+                  .then(() => {
+                      console.log("Appointment added!");
+                      Swal.fire('Success!', 'Appointment booked successfully.', 'success');
+                  })
+                  .catch(error => {
+                      console.error("Error adding appointment: ", error);
+                      Swal.fire('Error!', 'Could not create appointment. Please try again.', 'error');
+                  });
+            } else {
+              console.log("Appointment booking cancelled.");
+            }
+          }); // End Swal.fire().then()
+        }, // End dateClick function
 
         // --- (Phase 4.4) Handle clicking on an *existing* event ---
         eventClick: function(clickInfo) {

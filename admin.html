@@ -6,6 +6,7 @@
     <title>Admin Control Panel</title>
     
     <link rel="stylesheet" href="style.css">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 	
     <style>
         /* [Your existing <style> code goes here...] */
@@ -156,7 +157,60 @@
             display: block; /* Show only the active one */
         }
         /* --- ===== END NEW STYLES ===== --- */
+		
+		/* --- ADJUSTED CSS FOR SWEETALERT MODAL --- */
+		.swal2-html-container {
+			overflow-x: hidden !important;
+			text-align: center; /* Center align the container's text */
+		}
 
+		/* Remove or comment out this rule, it conflicts with centering */
+		/*
+		.swal2-content {
+			 text-align: left;
+			 padding: 0 1em;
+		}
+		*/
+
+		.swal2-label { /* Target the labels specifically */
+			display: block; /* Make labels block-level */
+			margin-bottom: 5px;
+			font-weight: bold;
+			text-align: left; /* Keep labels left-aligned */
+			max-width: 90%; /* Prevent labels getting too wide */
+			margin-left: auto; /* Center the label block */
+			margin-right: auto; /* Center the label block */
+		}
+
+		.swal2-input {
+			width: 90% !important; /* Make inputs slightly less than full width */
+			box-sizing: border-box;
+			margin-bottom: 15px !important;
+			/* Inputs are naturally centered by the container's text-align: center */
+		}
+
+		#swal-duration-buttons {
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: center; /* Change to center for better button grouping */
+			margin-bottom: 15px;
+			max-width: 90%; /* Keep buttons contained */
+			margin-left: auto; /* Center the button block */
+			margin-right: auto; /* Center the button block */
+
+		}
+
+		#swal-duration-buttons .duration-button {
+			 /* Adjust flex-basis slightly, maybe remove if wrapping nicely */
+			flex-basis: calc(50% - 10px);
+			margin: 5px !important;
+			padding: 10px 5px;
+			box-sizing: border-box;
+			min-width: 80px;
+		}
+		/* --- END ADJUSTED CSS --- */
+
+</style>
     </style>
 </head>
 <body>
@@ -220,6 +274,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.14/index.global.min.js'></script>
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
     <script src="admin.js"></script>
     
 </body>
