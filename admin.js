@@ -42,6 +42,8 @@ const tabStatus = document.getElementById('tab-status');
 const tabCalendar = document.getElementById('tab-calendar');
 const panelStatus = document.getElementById('panel-status');
 const panelCalendar = document.getElementById('panel-calendar');
+const tabSettings = document.getElementById('tab-settings');
+const panelSettings = document.getElementById('panel-settings');
 
 // --- NEW (Phase 3): Calendar element ---
 const calendarEl = document.getElementById('calendar-container');
@@ -148,20 +150,25 @@ function handleTabClick(event) {
     // Remove 'active' from all tabs and panels
     tabStatus.classList.remove('active');
     tabCalendar.classList.remove('active');
+    tabSettings.classList.remove('active'); // <<< ADD
     panelStatus.classList.remove('active');
     panelCalendar.classList.remove('active');
+    panelSettings.classList.remove('active'); // <<< ADD
 
     // Add 'active' to the clicked tab and its corresponding panel
     if (clickedTab.id === 'tab-status') {
         tabStatus.classList.add('active');
         panelStatus.classList.add('active');
+        // loadAndDisplayActiveAppointment(); // <<< Keep or remove depending on which version you're on
     } else if (clickedTab.id === 'tab-calendar') {
         tabCalendar.classList.add('active');
         panelCalendar.classList.add('active');
-        // Tell the calendar to re-render, as it was hidden
         if (calendar) {
             calendar.render();
         }
+    } else if (clickedTab.id === 'tab-settings') { // <<< ADD THIS ELSE IF
+        tabSettings.classList.add('active');
+        panelSettings.classList.add('active');
     }
 }
 
@@ -441,3 +448,4 @@ changePasswordButton.addEventListener('click', onChangePasswordClick);
 // --- NEW (Phase 3): Tab listeners ---
 tabStatus.addEventListener('click', handleTabClick);
 tabCalendar.addEventListener('click', handleTabClick);
+tabSettings.addEventListener('click', handleTabClick);

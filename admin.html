@@ -233,6 +233,7 @@
         <nav class="tab-navigation">
             <button id="tab-status" class="tab-button active">Update Status</button>
             <button id="tab-calendar" class="tab-button">Bookings Calendar</button>
+			<button id="tab-settings" class="tab-button">Settings</button>
         </nav>
         <main>
 
@@ -250,9 +251,6 @@
                     <button id="update-button">Update Status</button>
                     <p id="update-message"></p>
                     
-                    <button id="change-password-button" class="secondary-button">Change Password</button>
-                    <p id="password-message"></p>
-
                 </div>
             </div>
             <div id="panel-calendar" class="tab-panel">
@@ -265,6 +263,15 @@
                     Click on an existing appointment to delete it.
                 </p>
             </div>
+			
+			<div id="panel-settings" class="tab-panel">
+				<div class="admin-form">
+					<h3>Account Settings</h3>
+					<button id="change-password-button" class="secondary-button">Change Password</button>
+					<p id="password-message"></p>
+					</div>
+			</div>
+			
             </main>
     </div> 
 
