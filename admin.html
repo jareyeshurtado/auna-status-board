@@ -6,8 +6,7 @@
     <title>Admin Control Panel</title>
     
     <link rel="stylesheet" href="style.css">
-
-    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.14/main.min.css' rel='stylesheet' />
+	
     <style>
         /* [Your existing <style> code goes here...] */
         /* [It's all the same, so I've hidden it for brevity] */
@@ -194,12 +193,6 @@
                         <button type="button" data-status="Away">Away</button>
                     </div>
 
-                    <label for="current-appt">Current Appointment</label>
-                    <input type="text" id="current-appt" placeholder="e.g., A-104 (11:00 AM)">
-
-                    <label for="next-appt">Next Appointment</label>
-                    <input type="text" id="next-appt" placeholder="e.g., A-105 (11:30 AM)">
-
                     <button id="update-button">Update Status</button>
                     <p id="update-message"></p>
                     
@@ -226,7 +219,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     
-    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.14/main.min.js'></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.14/index.global.min.js'></script>
     <script src="admin.js"></script>
     
 </body>

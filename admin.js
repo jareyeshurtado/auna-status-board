@@ -34,8 +34,6 @@ const passwordMessage = document.getElementById('password-message');
 
 // --- Status Panel elements ---
 const statusButtonsContainer = document.getElementById('status-buttons');
-const currentApptInput = document.getElementById('current-appt');
-const nextApptInput = document.getElementById('next-appt');
 
 // --- NEW (Phase 3): Tab elements ---
 const tabStatus = document.getElementById('tab-status');
@@ -87,8 +85,6 @@ auth.onAuthStateChanged(user => {
         }
 
         // Clear the status form
-        currentApptInput.value = '';
-        nextApptInput.value = '';
         selectedStatus = '';
     }
 });
@@ -189,30 +185,58 @@ function initializeCalendar(uid) {
         
         // --- (Phase 4.1) Handle clicking on an empty date/time ---
         dateClick: function(clickInfo) {
+            
             const patientName = prompt('Enter Patient Name:');
             
-            if (patientName) {
-                // Calculate end time (default to 30 min appt)
-                const endDate = new Date(clickInfo.date.getTime() + 30 * 60000);
-
-                // Create the new appointment object
-                const newAppointment = {
-                    doctorId: uid, // Tag with the doctor's UID for security
-                    patientName: patientName,
-                    start: clickInfo.dateStr, // e.g., "2025-10-25T10:00:00"
-                    end: endDate.toISOString()
-                };
-
-                // Add it to Firebase
-                db.collection('appointments').add(newAppointment)
-                    .then(() => {
-                        console.log("Appointment added!");
-                    })
-                    .catch(error => {
-                        console.error("Error adding appointment: ", error);
-                        alert("Error: Could not create appointment.");
-                    });
+            // 1. Check if they entered a name
+            if (!patientName) {
+                console.log("Appointment creation cancelled.");
+                return; // Stop if no name
             }
+
+            // --- 2. NEW Phone Validation Loop ---
+            
+            // This is our validation rule:
+            // ^\d{10}$ means "Must start (^), have 10 digits (\d{10}), and then end ($)"
+            const phoneRegex = /^\d{10}$/; 
+            let patientPhone = prompt('Enter Patient Phone Number (10 digits exactly):');
+
+            // Keep looping as long as the input is NOT valid
+            while (patientPhone !== null && !phoneRegex.test(patientPhone)) {
+                // Show an error and ask again
+                alert("Invalid phone number. Please enter 10 digits only (e.g., 1234567890).");
+                patientPhone = prompt('Enter Patient Phone Number (10 digits exactly):');
+            }
+
+            // 3. Check if they clicked "Cancel" on the phone prompt
+            if (patientPhone === null) {
+                alert("Appointment cancelled.");
+                return; // Stop if they cancelled
+            }
+
+            // --- End of Validation Loop ---
+            // If we get here, patientPhone is valid!
+
+            // 4. Calculate end time and create the object
+            const endDate = new Date(clickInfo.date.getTime() + 30 * 60000);
+
+            const newAppointment = {
+                doctorId: uid,
+                patientName: patientName,
+                patientPhone: patientPhone, // This is now a validated 10-digit number
+                start: clickInfo.dateStr,
+                end: endDate.toISOString()
+            };
+
+            // 5. Add it to Firebase
+            db.collection('appointments').add(newAppointment)
+                .then(() => {
+                    console.log("Appointment added!");
+                })
+                .catch(error => {
+                    console.error("Error adding appointment: ", error);
+                    alert("Error: Could not create appointment.");
+                });
         },
 
         // --- (Phase 4.4) Handle clicking on an *existing* event ---
@@ -260,7 +284,7 @@ function initializeCalendar(uid) {
 
             // --- (Phase 3.4) Update the calendar's events ---
             if (calendar) {
-                calendar.setProp('events', events);
+                calendar.setOption('events', events);
             }
         }, error => {
             console.error("Error fetching appointments: ", error);
@@ -284,8 +308,6 @@ function loadDoctorProfile(uid) {
             snapshot.forEach(doc => {
                 const doctor = doc.data();
                 currentDoctorDocId = doc.id; 
-                currentApptInput.value = doctor.currentAppointment || '';
-                nextApptInput.value = doctor.nextAppointment || '';
                 selectedStatus = doctor.status || '';
                 updateStatusButtonUI();
             });
@@ -321,9 +343,7 @@ function onUpdateButtonClick() {
     }
     
     const updateData = {
-        status: selectedStatus,
-        currentAppointment: currentApptInput.value,
-        nextAppointment: nextApptInput.value
+        status: selectedStatus
     };
     
     updateButton.disabled = true;
