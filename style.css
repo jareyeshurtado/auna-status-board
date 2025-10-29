@@ -1,4 +1,7 @@
-/* General body styling */
+/* =============================== */
+/* === SHARED GLOBAL STYLES ====== */
+/* =============================== */
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     background-color: #f0f2f5;
@@ -7,7 +10,6 @@ body {
     padding: 20px;
 }
 
-/* Header styling */
 header {
     text-align: center;
     margin-bottom: 30px;
@@ -18,19 +20,59 @@ header h1 {
     color: #1c3d5a;
 }
 
-/* The main grid container for all doctor cards */
-#board-container {
-    display: grid;
-    /* This creates a responsive grid. It will try to fit
-       cards that are 350px wide. */
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 25px; /* Space between cards */
-    max-width: 1920px; /* Max width for large screens */
-    margin: 0 auto; /* Center the container */
+.loading-message {
+    font-size: 1.5rem;
+    color: #777;
+    text-align: center;
+    padding: 30px;
 }
 
-/* Styling for each individual doctor card */
-.doctor-card {
+/* Shared Status Colors (Backgrounds/Text) */
+.status.on-time,
+.status.go-ahead {
+    background-color: #e0f8e9;
+    color: #006421;
+}
+
+.status.delayed {
+    background-color: #fff8e0;
+    color: #a06c00;
+}
+
+.status.away,
+.status.finished {
+    background-color: #fdebee;
+    color: #c91c1c;
+}
+
+/* =============================== */
+/* === BASE CONTAINER (Minimal) === */
+/* =============================== */
+#board-container {
+     margin: 0 auto; /* Center */
+     /* All other styles are applied by .card-layout or .row-layout */
+}
+
+
+/* =============================== */
+/* === CARD VIEW STYLES ========== */
+/* =============================== */
+
+/* Card View Container Specifics */
+.card-layout#board-container { /* You can also combine them like this */
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 25px;
+    max-width: 1920px; /* Max width for cards */
+    /* Reset styles that might conflict from row view */
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    font-size: inherit; /* Use body font size */
+}
+
+/* Card Styling */
+.card-layout .doctor-card {
     background-color: #ffffff;
     border-radius: 10px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
@@ -39,71 +81,148 @@ header h1 {
     border-left: 5px solid #007bff; /* Default accent color */
 }
 
-.doctor-card:hover {
+.card-layout .doctor-card:hover {
     transform: translateY(-5px);
 }
 
-.doctor-card h2 {
+.card-layout .doctor-card h2 {
     margin: 0 0 5px 0;
     font-size: 1.8rem;
     color: #1c3d5a;
 }
 
-.doctor-card .specialty {
+.card-layout .doctor-card .specialty {
     margin: 0 0 15px 0;
     font-size: 1.1rem;
     color: #555;
     font-weight: 500;
 }
 
-/* The main status message */
-.doctor-card .status {
+/* Card View Status Pill Specifics */
+.card-layout .doctor-card .status {
     font-size: 1.4rem;
     font-weight: bold;
     padding: 10px;
     border-radius: 5px;
     text-align: center;
     margin-bottom: 20px;
+    display: block;
 }
 
-/* Individual status colors */
-.status.on-time {
-    background-color: #e0f8e9;
-    color: #006421;
-}
-.doctor-card.status-on-time { /* Card border color */
+/* Card View Border Colors */
+.card-layout .doctor-card.status-on-time {
     border-left-color: #00b03b;
 }
-
-.status.delayed {
-    background-color: #fff8e0;
-    color: #a06c00;
-}
-.doctor-card.status-delayed {
+.card-layout .doctor-card.status-delayed {
     border-left-color: #ffc107;
 }
-
-.status.away {
-    background-color: #fdebee;
-    color: #c91c1c;
-}
-.doctor-card.status-away {
+.card-layout .doctor-card.status-away {
     border-left-color: #e53935;
 }
 
-/* Current and Next appointment info */
-.appointment-info {
+/* Card View Appointment Info */
+.card-layout .appointment-info {
     font-size: 1.1rem;
     line-height: 1.6;
 }
 
-.appointment-info strong {
+.card-layout .appointment-info strong {
     color: #444;
 }
 
-/* Loading message styling */
-.loading-message {
-    font-size: 1.5rem;
-    color: #777;
+
+/* =============================== */
+/* === ROW VIEW STYLES =========== */
+/* =============================== */
+
+/* Row View Container */
+.row-layout#board-container { /* You can also combine them like this */
+    display: block; /* Ensure it's not grid */
+    max-width: 1800px;
+    margin: 0 auto;
+    font-size: 1.4rem; /* Specific font size for rows */
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    gap: 0;
+}
+
+/* Row View Header */
+.row-layout .board-header {
+    display: flex;
+    font-weight: bold;
+    background-color: #e9ecef;
+    color: #343a40;
+    padding: 15px 10px;
+    border-bottom: 2px solid #ccc;
+    font-size: 1.1rem;
+    border-top-left-radius: 7px;
+    border-top-right-radius: 7px;
+}
+
+/* Row View Doctor Row */
+.row-layout .doctor-row {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    background-color: #ffffff;
+    padding: 15px 10px;
+}
+
+.row-layout .doctor-row:nth-child(even) { /* Exclude header */
+    background-color: #f9f9f9;
+}
+
+.row-layout #board-container > .doctor-row:last-child {
+    border-bottom: none;
+}
+
+/* Row View Cells (Applies to header and data rows) */
+.row-layout .doctor-cell {
+    padding: 5px 15px;
+    box-sizing: border-box;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Row View Cell Widths */
+.row-layout .cell-name {
+    flex: 0 0 20%;
+    font-weight: bold;
+}
+.row-layout .cell-specialty {
+    flex: 0 0 15%;
+    color: #555;
+}
+.row-layout .cell-current {
+    flex: 1 1 18%;
+    min-width: 100px;
+}
+.row-layout .cell-status {
+    flex: 0 0 15%;
     text-align: center;
+}
+
+/* Row View Status Pill Specifics */
+.row-layout .cell-status .status {
+    padding: 8px 10px;
+    font-size: 1.1rem;
+    margin: 0;
+    display: inline-block;
+    min-width: 100px;
+    border-radius: 5px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.row-layout .cell-office {
+    flex: 0 0 10%;
+    text-align: center;
+    color: #444;
+}
+.row-layout .cell-next {
+    flex: 1 1 22%;
+    min-width: 100px;
 }

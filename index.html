@@ -3,28 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auna Status Board</title>
+    <!-- This title is for the browser tab, it won't be translated by our script -->
+    <title>Doctor Status Board</title>
     
+    <!-- Link to our stylesheet -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <header>
-        <h1>Doctor Appointments</h1>
+        <!-- This h1 is now empty and will be filled by display.js -->
+        <h1 id="main-title-h1"></h1>
     </header>
 
     <main>
+        <!-- 
+          The #board-container will be filled by display.js
+          It will also have either 'card-layout' or 'row-layout' class added
+        -->
         <div id="board-container">
             
-            <p class="loading-message">Loading status board...</p>
+            <!-- A temporary loading message (will be replaced by JS) -->
+            <p class="loading-message">Loading...</p>
 
-            </div>
+        </div>
     </main>
 
 
+    <!-- 
+      Firebase SDK (Software Development Kit) Scripts.
+    -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     
+    <!-- 
+      Our custom display.js script.
+      This MUST be after the Firebase scripts.
+    -->
     <script src="display.js"></script>
 
 </body>
