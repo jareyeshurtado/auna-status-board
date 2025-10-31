@@ -134,15 +134,29 @@ function listenForDoctorUpdates() {
             const doctor = doc.data();
             const doctorId = doc.id;
 
-            let statusClass = 'on-time';
+            let statusClass = 'available'; // Default to 'available' (green)
             let displayStatus = doctor.status || i18n.global?.noStatus;
+            
             if (doctor.status) {
                 const lowerCaseStatus = doctor.status.toLowerCase();
-                if (lowerCaseStatus === 'go ahead') statusClass = 'on-time';
-                else if (lowerCaseStatus === 'finished') statusClass = 'away';
-                else if (lowerCaseStatus.includes('delay') || lowerCaseStatus.includes('late')) statusClass = 'delayed';
-                else if (lowerCaseStatus.includes('away') || lowerCaseStatus.includes('unavailable')) statusClass = 'away';
-                else if (lowerCaseStatus === 'on time') statusClass = 'on-time';
+
+                // New logic for new statuses
+                if (lowerCaseStatus.includes('in consultation')) {
+                    statusClass = 'consultation'; // Blue
+                } else if (lowerCaseStatus.includes('delayed')) {
+                    statusClass = 'delayed'; // Yellow
+                }  else if (lowerCaseStatus.includes('not available')) {
+                    statusClass = 'unavailable'; // Red
+                } else if (lowerCaseStatus.includes('available')) {
+                    statusClass = 'available'; // Green
+                }
+                
+                // Fallback logic for old statuses (maps them to new colors)
+                else if (lowerCaseStatus.includes('on time') || lowerCaseStatus.includes('go ahead')) {
+                    statusClass = 'available'; // Green
+                } else if (lowerCaseStatus.includes('away') || lowerCaseStatus.includes('finished')) {
+                    statusClass = 'unavailable'; // Red
+                }
             }
 
             let displayCurrent = doctor.displayCurrentAppointment || doctor.autoCurrentAppointment || '---';

@@ -28,17 +28,28 @@ header h1 {
 }
 
 /* Shared Status Colors (Backgrounds/Text) */
-.status.on-time,
-.status.go-ahead {
+
+/* NEW 'In Consultation' (Blue) */
+.status.consultation {
+    background-color: #e0f0ff; /* Light blue */
+    color: #0056b3; /* Dark blue */
+}
+
+/* RENAMED 'Available' (Green) - was .on-time */
+.status.available,
+.status.on-time{
     background-color: #e0f8e9;
     color: #006421;
 }
 
+/* 'Delayed' (Yellow) - No change */
 .status.delayed {
     background-color: #fff8e0;
     color: #a06c00;
 }
 
+/* RENAMED 'Not Available' (Red) - was .away */
+.status.unavailable,
 .status.away,
 .status.finished {
     background-color: #fdebee;
