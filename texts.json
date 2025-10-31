@@ -12,7 +12,11 @@
       "noStatus": "No Status",
       "notApplicable": "N/A",
       "unnamedDoctor": "Unnamed Doctor",
-      "noSpecialty": "No Specialty"
+      "noSpecialty": "No Specialty",
+	  "statusInConsultation": "In Consultation",
+	  "statusDelayed": "Consultation Delayed",
+	  "statusAvailable": "Available",
+	  "statusNotAvailable": "Not Available"
     },
     "admin": {
       "controlTitle": "Doctor Status Control",
@@ -32,6 +36,10 @@
       "sendingResetEmail": "Sending reset email...",
       "resetEmailSuccess": "Success! Check your email inbox for a reset link.",
       "resetEmailError": "Error:",
+	  "statusInConsultation": "In Consultation",
+	  "statusDelayed": "Consultation Delayed",
+	  "statusAvailable": "Available",
+	  "statusNotAvailable": "Not Available",
       "bookAppointmentTitle": "Book Appointment at {time}",
       "patientNameLabel": "Patient Name:",
       "patientNamePlaceholder": "Enter patient name",
@@ -79,7 +87,11 @@
       "noStatus": "Sin Estado",
       "notApplicable": "N/A",
       "unnamedDoctor": "Doctor Sin Nombre",
-      "noSpecialty": "Sin Especialidad"
+      "noSpecialty": "Sin Especialidad",
+	  "statusInConsultation": "En Consulta",
+	  "statusDelayed": "Consulta Retrasada",
+	  "statusAvailable": "Disponible",
+	  "statusNotAvailable": "No Disponible"
     },
     "admin": {
       "controlTitle": "Control de Estatus de Doctores",
@@ -99,6 +111,10 @@
       "sendingResetEmail": "Enviando correo de reajuste...",
       "resetEmailSuccess": "¡Éxito! Revise su correo para reajustar la contraseña.",
       "resetEmailError": "Error:",
+	  "statusInConsultation": "En Consulta",
+	  "statusDelayed": "Consulta Retrasada",
+	  "statusAvailable": "Disponible",
+	  "statusNotAvailable": "No Disponible",
       "bookAppointmentTitle": "Agendar Cita a las {time}",
       "patientNameLabel": "Nombre del Paciente:",
       "patientNamePlaceholder": "Ingrese nombre del paciente",

@@ -77,6 +77,41 @@ async function initializeAdmin() {
     setupAuthListener(); // Start auth listener AFTER texts are ready
 }
 
+/**
+ * Maps a translated status string back to its non-translated key.
+ * e.g., "Disponible" -> "Available"
+ */
+function mapStatusToKey(status) {
+    if (!status) return '';
+    
+    // We must check the i18n values first
+    if (status === i18n.admin?.statusInConsultation) {
+        return "In Consultation";
+    }
+    if (status === i18n.admin?.statusDelayed) {
+        return "Consultation Delayed";
+    }
+    if (status === i18n.admin?.statusAvailable) {
+        return "Available";
+    }
+    if (status === i18n.admin?.statusNotAvailable) {
+        return "Not Available";
+    }
+
+    // Fallback for old values or if language is somehow English
+    const lower = status.toLowerCase();
+    if (lower.includes('in consultation')) return "In Consultation";
+    if (lower.includes('delayed')) return "Consultation Delayed";
+    if (lower.includes('not available')) return "Not Available";
+    if (lower.includes('available')) return "Available"; // Must be after 'not available'
+
+    // Fallback for very old values
+    if (lower.includes('on time') || lower.includes('go ahead')) return "Available";
+    if (lower.includes('away') || lower.includes('finished')) return "Not Available";
+    
+    return ''; // Default
+}
+
 /** Applies static text to the admin page. */
 function applyStaticTextsAdmin() {
     // --- ADD BACK: Set text for Update Status button ---
@@ -92,6 +127,19 @@ function applyStaticTextsAdmin() {
      }
      // --- END ADD BACK ---
 
+	if (document.getElementById('btn-status-consultation')) {
+        document.getElementById('btn-status-consultation').textContent = i18n.admin?.statusInConsultation || 'In Consultation';
+    }
+    if (document.getElementById('btn-status-delayed')) {
+        document.getElementById('btn-status-delayed').textContent = i18n.admin?.statusDelayed || 'Consultation Delayed';
+    }
+    if (document.getElementById('btn-status-available')) {
+        document.getElementById('btn-status-available').textContent = i18n.admin?.statusAvailable || 'Available';
+    }
+    if (document.getElementById('btn-status-unavailable')) {
+        document.getElementById('btn-status-unavailable').textContent = i18n.admin?.statusNotAvailable || 'Not Available';
+    }
+	
     // Set other static texts...
     if (loginTitleH2) loginTitleH2.textContent = i18n.admin?.loginTitle || "Login";
     if (loginEmail) loginEmail.placeholder = i18n.admin?.loginEmailPlaceholder || "Email";
@@ -347,16 +395,19 @@ function loadDoctorProfile() {
         .then(doc => {
              if (doc.exists) {
                 const doctor = doc.data();
-                selectedStatus = doctor.status || ''; // Get current status
+
+                // --- CHANGE: Map the loaded status back to its key ---
+                selectedStatus = mapStatusToKey(doctor.status);
+                // --- END CHANGE ---
                 
-                // --- NEW: Set the admin title to the doctor's name ---
+                // --- Set the admin title to the doctor's name ---
                 if (adminTitleH1) {
                     // Use displayName, or fall back to the text from texts.json
                     adminTitleH1.textContent = doctor.displayName || (i18n.admin?.controlTitle || "Doctor Control");
                 }
-                // --- END NEW ---
+                // --- END ---
 
-                console.log("Loaded current status:", selectedStatus);
+                console.log("Loaded current status from DB:", doctor.status, "Mapped to key:", selectedStatus);
                 updateStatusButtonUI(); // Update UI to reflect loaded status
              } else {
                  console.error("Doctor document not found during profile load:", currentDoctorDocId);
@@ -405,6 +456,7 @@ function updateStatusButtonUI() {
 }
 
 /** Handles click on the "Update Status" button */
+/** Handles click on the "Update Status" button */
 function onUpdateButtonClick() {
     if (!currentDoctorDocId) {
         Swal.fire('Error!', i18n.admin?.statusUpdateErrorProfile || 'Cannot update status. Doctor profile not loaded.', 'error');
@@ -416,7 +468,20 @@ function onUpdateButtonClick() {
         return;
     }
 
-    const updateData = { status: selectedStatus };
+    // --- NEW: Find the translated text to save ---
+    let translatedStatus = selectedStatus; // Default to the key
+    if (selectedStatus === "In Consultation") {
+        translatedStatus = i18n.admin?.statusInConsultation || selectedStatus;
+    } else if (selectedStatus === "Consultation Delayed") {
+        translatedStatus = i18n.admin?.statusDelayed || selectedStatus;
+    } else if (selectedStatus === "Available") {
+        translatedStatus = i18n.admin?.statusAvailable || selectedStatus;
+    } else if (selectedStatus === "Not Available") {
+        translatedStatus = i18n.admin?.statusNotAvailable || selectedStatus;
+    }
+
+    const updateData = { status: translatedStatus }; // Save the translated status
+    // --- END NEW ---
 
     // Ensure updateButton exists before using it
     if (updateButton) {
