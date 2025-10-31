@@ -93,7 +93,6 @@ function applyStaticTextsAdmin() {
      // --- END ADD BACK ---
 
     // Set other static texts...
-    if (adminTitleH1) adminTitleH1.textContent = i18n.admin?.controlTitle || "Admin";
     if (loginTitleH2) loginTitleH2.textContent = i18n.admin?.loginTitle || "Login";
     if (loginEmail) loginEmail.placeholder = i18n.admin?.loginEmailPlaceholder || "Email";
     if (loginPassword) loginPassword.placeholder = i18n.admin?.loginPasswordPlaceholder || "Password";
@@ -349,13 +348,31 @@ function loadDoctorProfile() {
              if (doc.exists) {
                 const doctor = doc.data();
                 selectedStatus = doctor.status || ''; // Get current status
+                
+                // --- NEW: Set the admin title to the doctor's name ---
+                if (adminTitleH1) {
+                    // Use displayName, or fall back to the text from texts.json
+                    adminTitleH1.textContent = doctor.displayName || (i18n.admin?.controlTitle || "Doctor Control");
+                }
+                // --- END NEW ---
+
                 console.log("Loaded current status:", selectedStatus);
                 updateStatusButtonUI(); // Update UI to reflect loaded status
              } else {
                  console.error("Doctor document not found during profile load:", currentDoctorDocId);
+                 // Fallback title if doctor doc not found
+                 if (adminTitleH1) {
+                    adminTitleH1.textContent = i18n.admin?.controlTitle || "Doctor Control";
+                 }
              }
         })
-        .catch(error => console.error("Error fetching doctor profile: ", error));
+        .catch(error => {
+            console.error("Error fetching doctor profile: ", error);
+            // Fallback title on error
+             if (adminTitleH1) {
+                adminTitleH1.textContent = i18n.admin?.controlTitle || "Doctor Control";
+             }
+        });
 }
 
 /** Handles clicks on the old status buttons */
