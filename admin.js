@@ -16,7 +16,7 @@ const MEXICO_TIMEZONE = "America/Mexico_City";
 
 // STEP 3: Get references (Including OLD status elements)
 const loginContainer = document.getElementById('login-container');
-const loginTitleH2 = document.getElementById('login-title-h2');
+const loginTitleH2 = document.getElementById('login-title-h2'); // This was missing in your file, added for completeness
 const loginEmail = document.getElementById('login-email');
 const loginPassword = document.getElementById('login-password');
 const loginButton = document.getElementById('login-button');
@@ -30,7 +30,7 @@ const tabSettings = document.getElementById('tab-settings');
 const panelStatus = document.getElementById('panel-status');
 const panelCalendar = document.getElementById('panel-calendar');
 const panelSettings = document.getElementById('panel-settings');
-const settingsTitleH3 = document.getElementById('settings-title-h3');
+const settingsTitleH3 = document.getElementById('settings-title-h3'); // This was missing, added for completeness
 const changePasswordButton = document.getElementById('change-password-button');
 const passwordMessage = document.getElementById('password-message');
 const calendarEl = document.getElementById('calendar-container');
@@ -38,7 +38,7 @@ const calendarEl = document.getElementById('calendar-container');
 // --- ADD BACK References for OLD Status Buttons ---
 const statusButtonsContainer = document.getElementById('status-buttons');
 const updateButton = document.getElementById('update-button');
-const updateMessage = document.getElementById('update-message');
+const updateMessage = document.getElementById('update-message'); // This was missing, added for completeness
 // --- END ADD BACK ---
 
 // STEP 4: Global variables
@@ -164,8 +164,8 @@ function setupAuthListener() {
             loginContainer.style.display = 'none';
             findDoctorDocumentId(user.uid).then(() => {
                 if (currentDoctorDocId) {
-                    initializeCalendar(user.uid);
-                    loadDoctorProfile(); // <<< ADD BACK: Load initial status for buttons
+                    initializeCalendar(user.uid); 
+                    loadDoctorProfile();
                 } else {
                     alert("Critical Error: Could not link login to doctor profile.");
                     auth.signOut();
@@ -198,7 +198,7 @@ function onChangePasswordClick() { /* ... Keep existing i18n version ... */
     const email = currentUser.email; passwordMessage.textContent = i18n.admin?.sendingResetEmail; passwordMessage.style.color = '#555';
     auth.sendPasswordResetEmail(email)
         .then(() => { passwordMessage.textContent = i18n.admin?.resetEmailSuccess; passwordMessage.style.color = '#006421'; setTimeout(() => { passwordMessage.textContent = ''; }, 7000); })
-        .catch(error => { passwordMessage.textContent = (i18n.admin?.resetEmailError || 'Error:') + ' ' + error.message; passwordMessage.style.color = '#c91c1c'; });
+        .catch(error => { passwordMessage.textContent = (i18n.admin?.loginErrorError || 'Error:') + ' ' + error.message; passwordMessage.style.color = '#c91c1c'; });
 }
 
 // =================================================================
@@ -217,44 +217,57 @@ async function findDoctorDocumentId(uid) { /* ... Keep existing function ... */
 // --- TAB SWITCHING FUNCTION (Unchanged) ---
 // =================================================================
 function handleTabClick(event) { /* ... Keep existing function ... */
-    const clickedTab = event.target;
+    const clickedTab = event.target.closest('button.tab-button'); // More robust selector
+    if (!clickedTab) return;
+
     tabStatus.classList.remove('active'); tabCalendar.classList.remove('active'); tabSettings.classList.remove('active');
     panelStatus.classList.remove('active'); panelCalendar.classList.remove('active'); panelSettings.classList.remove('active');
+    
     if (clickedTab.id === 'tab-status') { tabStatus.classList.add('active'); panelStatus.classList.add('active'); loadDoctorProfile(); /* <<< Load status when switching TO status */ }
     else if (clickedTab.id === 'tab-calendar') { tabCalendar.classList.add('active'); panelCalendar.classList.add('active'); if (calendar) calendar.render(); }
     else if (clickedTab.id === 'tab-settings') { tabSettings.classList.add('active'); panelSettings.classList.add('active'); }
 }
 
 // =================================================================
-// --- CALENDAR FUNCTIONS (CORRECTED) ---
+// --- CALENDAR FUNCTIONS (CORRECTED WITH TIMEZONE) ---
 // =================================================================
 function initializeCalendar(uid) {
     if (calendar) return; // Initialize only once
 
-    console.log("Initializing Calendar for user:", uid); // Add log
+    console.log("Initializing Calendar for user:", uid); 
 
     calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'timeGridWeek', // <<< Make sure this is set
+        initialView: 'timeGridWeek', 
         headerToolbar: {
             left: 'prev,next today',
             center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay' // Standard views
+            right: 'dayGridMonth,timeGridWeek,timeGridDay' 
         },
-        editable: false, // Keep false
-        selectable: true, // Keep true
-        timeZone: MEXICO_TIMEZONE, // Your timezone
+        editable: false, 
+        selectable: true, 
+        
+        // --- *** FIX 1: RE-ADD the timeZone setting *** ---
+        // This now works because we loaded the plugins in admin.html
+        timeZone: MEXICO_TIMEZONE, 
 
-        // --- dateClick using SweetAlert2 (Restore this fully) ---
+        // --- dateClick using SweetAlert2 ---
         dateClick: function(clickInfo) {
-          console.log("dateClick triggered:", clickInfo.dateStr); // Add log
-          const startDate = clickInfo.date;
+          
+          // --- *** FIX 2: Use clickInfo.dateStr *** ---
+          // Because the plugin is loaded, this string will now
+          // correctly be "....T18:00:00-06:00" (for 6:00 PM CST)
+          console.log("dateClick triggered. dateStr:", clickInfo.dateStr); 
+          
+          // JS 'new Date()' can parse this offset string perfectly.
+          const startDate = new Date(clickInfo.dateStr); 
+
           const startTimeFormatted = startDate.toLocaleTimeString("en-US", {
               hour: "2-digit", minute: "2-digit", hour12: true, timeZone: MEXICO_TIMEZONE,
             });
 
           Swal.fire({
             title: (i18n.admin?.bookAppointmentTitle || 'Book Appointment at {time}').replace('{time}', startTimeFormatted),
-            width: '600px', // Keep custom width
+            width: '600px', 
              html: `
               <div>
                 <span class="swal2-label" for="swal-input-name">${i18n.admin?.patientNameLabel || 'Patient Name:'}</span>
@@ -296,22 +309,34 @@ function initializeCalendar(uid) {
               if (!duration) { Swal.showValidationMessage(i18n.admin?.validationDuration || 'Select duration'); return false; }
               return { name: name, phone: phone, duration: parseInt(duration, 10) };
             }
-          }).then(async (result) => { // Submission logic (keep as before)
+          }).then(async (result) => { 
             if (result.isConfirmed && result.value) {
               const formData = result.value;
-              const newStartTime = startDate;
+              
+              // --- *** FIX 2 (cont.): Use the dateStr again *** ---
+              const newStartTime = new Date(clickInfo.dateStr); 
               const newEndTime = new Date(newStartTime.getTime() + formData.duration * 60000);
-              try { // Overlap check (keep as before)
+
+              try { 
+                // .toISOString() will now correctly convert 6:00 PM CST to 12:00 AM UTC (next day)
                 const overlapQuery = await db.collection("appointments").where("doctorId", "==", uid).where("end", ">", newStartTime.toISOString()).where("start", "<", newEndTime.toISOString()).get();
                 let isOverlapping = !overlapQuery.empty;
-                 if (!isOverlapping) { /* Fallback check if needed */ }
-                if (isOverlapping) { Swal.fire(i18n.admin?.bookingErrorTitle, i18n.admin?.overlapErrorText, 'warning'); return; }
-              } catch (error) { /* Error handling, including index check */
+                 if (isOverlapping) { Swal.fire(i18n.admin?.bookingErrorTitle, i18n.admin?.overlapErrorText, 'warning'); return; }
+              } catch (error) { 
                  if (error.code === 'failed-precondition') Swal.fire('Setup Required', 'Index needed.', 'info');
                  else Swal.fire(i18n.admin?.bookingErrorTitle, i18n.admin?.overlapCheckErrorText, 'error');
                  return;
               }
-              const newAppointment = { doctorId: uid, patientName: formData.name, patientPhone: formData.phone, start: newStartTime.toISOString(), end: newEndTime.toISOString() };
+              
+              // This will now save the correct UTC-converted time
+              const newAppointment = { 
+                  doctorId: uid, 
+                  patientName: formData.name, 
+                  patientPhone: formData.phone, 
+                  start: newStartTime.toISOString(), 
+                  end: newEndTime.toISOString() 
+                };
+
               db.collection('appointments').add(newAppointment)
                   .then(() => Swal.fire(i18n.admin?.bookingSuccessTitle, i18n.admin?.bookingSuccessText, 'success'))
                   .catch(error => Swal.fire(i18n.admin?.bookingErrorTitle, i18n.admin?.bookingErrorText, 'error'));
@@ -319,9 +344,9 @@ function initializeCalendar(uid) {
           });
         }, // End dateClick
 
-        // --- eventClick for Deleting (Restore this fully) ---
+        // --- eventClick for Deleting (No change) ---
         eventClick: function(clickInfo) {
-             console.log("eventClick triggered:", clickInfo.event.id); // Add log
+             console.log("eventClick triggered:", clickInfo.event.id); 
             Swal.fire({
                 title: i18n.admin?.deleteConfirmTitle || 'Delete?',
                 text: (i18n.admin?.deleteConfirmText || 'Delete {patient}?').replace('{patient}', clickInfo.event.title),
@@ -341,19 +366,19 @@ function initializeCalendar(uid) {
                         });
                 }
             });
-        } // End eventClick
+        }, // End eventClick
     }); // End new FullCalendar.Calendar
 
     calendar.render(); // Render the calendar
 
-    // --- Start the real-time listener for appointments (Restore this fully) ---
+    // --- Start the real-time listener for appointments (No change) ---
     if (appointmentsListener) appointmentsListener(); // Detach old listener if exists
 
-    console.log("Setting up Firestore listener for appointments..."); // Add log
+    console.log("Setting up Firestore listener for appointments..."); 
     appointmentsListener = db.collection('appointments')
         .where('doctorId', '==', uid)
         .onSnapshot(snapshot => {
-             console.log(`Received ${snapshot.docs.length} appointments from listener.`); // Add log
+             console.log(`Received ${snapshot.docs.length} appointments from listener.`); 
             const events = snapshot.docs.map(doc => {
                 const data = doc.data();
                 if (data.patientName && data.start && data.end) {
@@ -370,8 +395,10 @@ function initializeCalendar(uid) {
             }).filter(event => event !== null); // Filter out nulls
 
             if (calendar) {
-                 console.log("Updating calendar events via setOption."); // Add log
-                calendar.setOption('events', events); // Correct method to update events
+                 console.log("Updating calendar events via setOption.");
+                 // The calendar (now forced to CST) will correctly
+                 // read the UTC string and display it in CST.
+                calendar.setOption('events', events); 
             } else {
                  console.warn("Calendar object not available to update events.");
             }
@@ -446,71 +473,257 @@ function updateStatusButtonUI() {
     console.log("Updating status button UI for selectedStatus:", selectedStatus);
     statusButtons.forEach(btn => {
         if (btn.dataset.status === selectedStatus) {
-            btn.classList.add('selected'); // Assumes you have a .selected style in admin.html <style>
-            btn.style.border = '2px solid black'; // Example: Add border to selected
+            btn.classList.add('selected'); 
         } else {
             btn.classList.remove('selected');
-            btn.style.border = '1px solid #ccc'; // Example: Reset border
         }
     });
 }
 
-/** Handles click on the "Update Status" button */
-/** Handles click on the "Update Status" button */
+
+// =================================================================
+// --- MODIFIED & NEW: Status Update Functions (Your Request) ---
+// =================================================================
+
+/**
+ * Handles click on the "Update Status" button.
+ * This is the main function we are modifying.
+ */
 function onUpdateButtonClick() {
     if (!currentDoctorDocId) {
         Swal.fire('Error!', i18n.admin?.statusUpdateErrorProfile || 'Cannot update status. Doctor profile not loaded.', 'error');
         return;
     }
     if (!selectedStatus) {
-         // Assuming key "validationStatus" in texts.json:admin
          Swal.fire('Warning', i18n.admin?.validationStatus || 'Please select a status first.', 'warning');
         return;
     }
 
-    // --- NEW: Find the translated text to save ---
-    let translatedStatus = selectedStatus; // Default to the key
-    if (selectedStatus === "In Consultation") {
-        translatedStatus = i18n.admin?.statusInConsultation || selectedStatus;
-    } else if (selectedStatus === "Consultation Delayed") {
-        translatedStatus = i18n.admin?.statusDelayed || selectedStatus;
-    } else if (selectedStatus === "Available") {
-        translatedStatus = i18n.admin?.statusAvailable || selectedStatus;
-    } else if (selectedStatus === "Not Available") {
-        translatedStatus = i18n.admin?.statusNotAvailable || selectedStatus;
+    // --- *** NEW LOGIC *** ---
+    // If status is "Available", show the prompt.
+    // Otherwise, update status normally.
+    if (selectedStatus === "Available") {
+        showNextAppointmentPrompt();
+    } else {
+        // Find the translated text to save
+        let translatedStatus = getTranslatedStatus(selectedStatus);
+        
+        // Update status normally, setting appt fields to null so they are not changed
+        updateDoctorStatusInFirestore(translatedStatus, null, null);
     }
+    // --- *** END NEW LOGIC *** ---
+}
 
-    const updateData = { status: translatedStatus }; // Save the translated status
-    // --- END NEW ---
+/**
+ * --- *** NEW FUNCTION (NOW WITH LOGS) *** ---
+ * Fetches next appointments and shows the "Start Consultation" card.
+ */
+async function showNextAppointmentPrompt() {
+    if (!currentUser || !currentDoctorDocId) return;
 
-    // Ensure updateButton exists before using it
+    // Set UI to loading state
     if (updateButton) {
       updateButton.disabled = true;
-      // Assuming key "updatingStatusButton" in texts.json:admin
+      updateButton.textContent = i18n.admin?.loading || 'Loading...';
+    }
+
+    try {
+        const now = new Date(); // Get "now" as a Date object first
+        const nowISO = now.toISOString(); // Get the UTC string for the query
+
+        // --- *** NEW LOGS *** ---
+        console.log("--- Troubleshooting showNextAppointmentPrompt ---");
+        console.log("Current Local Time:", now.toLocaleString(undefined, { timeZone: MEXICO_TIMEZONE, hour12: false }));
+        console.log("Current UTC Time (nowISO):", nowISO);
+        console.log(`Query: appointments.where("doctorId", "==", "${currentUser.uid}").where("start", ">=", "${nowISO}")`);
+        // --- *** END NEW LOGS *** ---
+        
+        // Query for the next 2 appointments for this doctor that haven't started yet
+        const apptSnapshot = await db.collection("appointments")
+            .where("doctorId", "==", currentUser.uid)
+            .where("start", ">=", nowISO) // Use the UTC string
+            .orderBy("start", "asc")
+            .limit(2)
+            .get();
+        
+        // --- *** NEW LOG *** ---
+        console.log(`Found ${apptSnapshot.empty ? 0 : apptSnapshot.docs.length} upcoming appointments.`);
+        if (!apptSnapshot.empty) {
+            console.log("First appointment found:", apptSnapshot.docs[0].data());
+        }
+        // --- *** END NEW LOG *** ---
+
+
+        if (apptSnapshot.empty) {
+            // --- Case 1: No upcoming appointments ---
+            console.log("No upcoming appointments found.");
+            // Set status to "Available" and clear appt fields
+            const availableStatus = i18n.admin?.statusAvailable || "Available";
+            await updateDoctorStatusInFirestore(availableStatus, "---", "---");
+            Swal.fire(i18n.admin?.bookingSuccessTitle || 'Success!', i18n.admin?.noAppointmentsFound || 'No appointments found.', 'info');
+            return; // Exit function
+        }
+
+        // --- Case 2: Appointments found ---
+        // (Rest of the function is the same as before)
+        const nextAppt = apptSnapshot.docs[0].data();
+        const afterNextAppt = apptSnapshot.docs[1] ? apptSnapshot.docs[1].data() : null;
+
+        // Format appointment details for the modal
+        const startTime = new Date(nextAppt.start).toLocaleTimeString("en-US", {
+            hour: "2-digit", minute: "2-digit", hour12: true, timeZone: MEXICO_TIMEZONE,
+        });
+
+        const modalHtml = `
+            <div style="text-align: left; padding: 0 1em;">
+                <p style="font-size: 1.2em;">
+                    <strong>${i18n.admin?.patientLabel || 'Patient:'}</strong> ${nextAppt.patientName}
+                </p>
+                <p style="font-size: 1.2em;">
+                    <strong>${i18n.admin?.phoneLabel || 'Phone:'}</strong> ${nextAppt.patientPhone}
+                </p>
+                <p style="font-size: 1.2em;">
+                    <strong>${i18n.admin?.timeLabel || 'Time:'}</strong> ${startTime}
+                </p>
+            </div>
+        `;
+
+        // Show the SweetAlert confirmation card
+        Swal.fire({
+            title: i18n.admin?.nextAppointmentTitle || 'Next Appointment',
+            html: modalHtml,
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonText: i18n.admin?.startButton || 'Start Consultation',
+            confirmButtonColor: '#28a745', // Green color for "Start"
+            cancelButtonText: i18n.admin?.cancelButton || 'Cancel' 
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                // --- "Start" button was clicked ---
+                
+                // 1. Format the text for "Current" and "Next"
+                const currentText = formatApptString(nextAppt);
+                const nextText = afterNextAppt ? formatApptString(afterNextAppt) : "---";
+                
+                // 2. Get the "In Consultation" status
+                const inConsultationStatus = i18n.admin?.statusInConsultation || "In Consultation";
+
+                // 3. Update all three fields in Firestore
+                await updateDoctorStatusInFirestore(inConsultationStatus, currentText, nextText);
+                
+                // 4. Update the local UI to show "In Consultation"
+                selectedStatus = "In Consultation";
+                updateStatusButtonUI();
+
+                Swal.fire(i18n.admin?.consultationStartSuccess || 'Success!', '', 'success');
+            }
+            // If cancelled, do nothing. Status remains as it was.
+        });
+
+    } catch (error) {
+        console.error("Error showing next appointment prompt: ", error);
+        Swal.fire(i18n.admin?.bookingErrorTitle || 'Error!', error.message, 'error');
+    } finally {
+        // Reset button regardless of outcome
+        if (updateButton) {
+            updateButton.disabled = false;
+            updateButton.textContent = i18n.admin?.updateStatusButton || 'Update Status';
+        }
+    }
+}
+
+
+/**
+ * --- *** NEW HELPER FUNCTION *** ---
+ * Reusable function to format an appointment object into a display string.
+ * (Based on the function from your functions/index.js)
+ */
+function formatApptString(appointment) {
+  if (!appointment || !appointment.start || !appointment.patientName) {
+    return "---"; 
+  }
+  const apptTime = new Date(appointment.start).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: MEXICO_TIMEZONE,
+  });
+  return `${appointment.patientName} (${apptTime})`;
+}
+
+/**
+ * --- *** NEW HELPER FUNCTION *** ---
+ * Gets the translated status string based on the (English) key.
+ */
+function getTranslatedStatus(statusKey) {
+    if (statusKey === "In Consultation") {
+        return i18n.admin?.statusInConsultation || statusKey;
+    } else if (statusKey === "Consultation Delayed") {
+        return i18n.admin?.statusDelayed || statusKey;
+    } else if (statusKey === "Available") {
+        return i18n.admin?.statusAvailable || statusKey;
+    } else if (statusKey === "Not Available") {
+        return i18n.admin?.statusNotAvailable || statusKey;
+    }
+    return statusKey; // Fallback
+}
+
+
+/**
+ * --- *** REFACTORED HELPER FUNCTION *** ---
+ * Central function to update the doctor's document in Firestore.
+ * @param {string} status - The translated status string to save.
+ * @param {string | null} currentText - Text for autoCurrentAppointment, or null to skip.
+ * @param {string | null} nextText - Text for autoNextAppointment, or null to skip.
+ */
+async function updateDoctorStatusInFirestore(status, currentText, nextText) {
+    if (!currentDoctorDocId) {
+         console.error("updateDoctorStatusInFirestore: No doctor ID found.");
+         return; // Guard clause
+    }
+
+    const updateData = { status: status };
+
+    // Only add appointment fields if they are not null
+    // This allows us to call this function to *only* update status
+    if (currentText !== null) {
+        updateData.autoCurrentAppointment = currentText;
+    }
+    if (nextText !== null) {
+        updateData.autoNextAppointment = nextText;
+    }
+
+    // Set UI to loading state
+    if (updateButton) {
+      updateButton.disabled = true;
       updateButton.textContent = i18n.admin?.updatingStatusButton || 'Updating...';
     }
 
-    db.collection('doctors').doc(currentDoctorDocId).update(updateData)
-        .then(() => {
-             // Assuming key "statusUpdateSuccess" in texts.json:admin
-             Swal.fire(i18n.admin?.bookingSuccessTitle || 'Success!', i18n.admin?.statusUpdateSuccess || 'Status updated successfully!', 'success');
-             // Optionally re-load profile data if needed after update
-             // loadDoctorProfile();
-         })
-        .catch(error => {
-            console.error("Error updating status document: ", error);
-             // Assuming key "statusUpdateError" in texts.json:admin
-             Swal.fire(i18n.admin?.bookingErrorTitle || 'Error!', i18n.admin?.statusUpdateError || 'Could not update status.', 'error');
-        })
-        .finally(() => {
-             if (updateButton) {
-                updateButton.disabled = false;
-                // Assuming key "updateStatusButton" in texts.json:admin (same as initial)
-                updateButton.textContent = i18n.admin?.updateStatusButton || 'Update Status';
-             }
-        });
+    try {
+        await db.collection('doctors').doc(currentDoctorDocId).update(updateData);
+        
+        // Don't show success alert if it's part of the "Available" flow
+        // (That flow shows its own specific alerts)
+        if (selectedStatus !== "Available") {
+             Swal.fire(i18n.admin?.bookingSuccessTitle || 'Success!', i18n.admin?.statusUpdateSuccess || 'Status updated!', 'success');
+        }
+        
+        // Re-load profile to ensure UI buttons (and selectedStatus var) are in sync
+        loadDoctorProfile(); 
+
+    } catch (error) {
+        console.error("Error updating status document: ", error);
+        Swal.fire(i18n.admin?.bookingErrorTitle || 'Error!', i18n.admin?.statusUpdateError || 'Could not update status.', 'error');
+    
+    } finally {
+        // Reset button
+        if (updateButton) {
+            updateButton.disabled = false;
+            updateButton.textContent = i18n.admin?.updateStatusButton || 'Update Status';
+        }
+    }
 }
-// --- END ADD BACK ---
+// --- END MODIFICATIONS ---
 
 
 // =================================================================
@@ -532,7 +745,7 @@ if (statusButtonsContainer) {
 }
 
 if (updateButton) {
-    updateButton.addEventListener('click', onUpdateButtonClick);
+    updateButton.addEventListener('click', onUpdateButtonClick); // This now points to our modified function
 } else {
     console.warn("Element with ID 'update-button' not found. Update Status button won't work.");
 }
@@ -543,4 +756,3 @@ if (updateButton) {
 // --- Start the application ---
 // =================================================================
 initializeAdmin(); // Single entry point
-

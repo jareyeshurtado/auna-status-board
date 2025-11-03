@@ -19,6 +19,14 @@
 	  "statusNotAvailable": "Not Available"
     },
     "admin": {
+	  "nextAppointmentTitle": "Next Appointment",
+      "patientLabel": "Patient:",
+      "phoneLabel": "Phone:",
+      "timeLabel": "Time:",
+      "startButton": "Start Consultation",
+      "noAppointmentsFound": "No upcoming appointments found. Status set to 'Available'.",
+      "consultationStartSuccess": "Consultation started!",
+      "consultationStartError": "Could not start consultation.",
       "controlTitle": "Doctor Status Control",
       "loginTitle": "Doctor Admin Login",
       "loginEmailPlaceholder": "Email Address",
@@ -94,6 +102,14 @@
 	  "statusNotAvailable": "No Disponible"
     },
     "admin": {
+	  "nextAppointmentTitle": "Próxima Cita",
+      "patientLabel": "Paciente:",
+      "phoneLabel": "Teléfono:",
+      "timeLabel": "Hora:",
+      "startButton": "Iniciar Consulta",
+      "noAppointmentsFound": "No se encontraron próximas citas. Estatus cambiado a 'Disponible'.",
+      "consultationStartSuccess": "¡Consulta iniciada!",
+      "consultationStartError": "No se pudo iniciar la consulta.",
       "controlTitle": "Control de Estatus de Doctores",
       "loginTitle": "Acceso de Administrador",
       "loginEmailPlaceholder": "Correo Electrónico",

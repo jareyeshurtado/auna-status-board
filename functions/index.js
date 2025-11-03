@@ -53,24 +53,34 @@ async function calculateAndUpdateDoctorStatus(doctorAuthUid) {
     console.error(`Could not find doctor document for authUID: ${doctorAuthUid}`);
     return;
   }
+  
   const doctorRef = doctorQuery.docs[0].ref;
+  const doctorData = doctorQuery.docs[0].data(); // Get the doctor's data
+
+  // --- *** NEW LOGIC BLOCK (YOUR REQUEST) *** ---
+  //
+  // We check the doctor's current status. If they are "busy" (in
+  // consultation or delayed), we must NOT overwrite their manually set
+  // autoCurrentAppointment and autoNextAppointment fields.
+  // We must check for both English and Spanish status strings.
+  const currentStatus = doctorData.status;
+  
+  if (
+    currentStatus === "In Consultation" ||  // English
+    currentStatus === "En Consulta" ||        // Spanish
+    currentStatus === "Consultation Delayed" || // English
+    currentStatus === "Consulta Retrasada"    // Spanish
+  ) {
+    console.log(`Doctor ${doctorAuthUid} is busy with status: "${currentStatus}". Skipping automatic appointment update.`);
+    // Exit the function early to preserve the manual appointment data.
+    return; 
+  }
+  // --- *** END NEW LOGIC BLOCK *** ---
 
   // 2. Get the start/end of TODAY in the correct timezone.
-  // Using Date objects with UTC offsets can be tricky. A library like Luxon
-  // is more robust, but this approximation often works for start/end of day.
-  // Be mindful of server timezone vs target timezone. We assume server runs UTC
-  // or a timezone where this calculation relative to MEXICO_TIMEZONE is correct.
+  // (Rest of the function continues as normal, since the doctor is not busy)
   const now = new Date();
-  // Construct Date objects representing midnight start/end *in Mexico City*
-  // This is complex due to JS Date object limitations. Let's try string parsing.
-  const todayDateStr = now.toLocaleDateString("en-CA", { timeZone: MEXICO_TIMEZONE }); // YYYY-MM-DD
-  const todayStartISO = `${todayDateStr}T00:00:00.000Z`; // Assumes start is UTC midnight before TZ conversion
-  const tomorrowDate = new Date(now);
-  tomorrowDate.setDate(now.getDate() + 1);
-  const tomorrowDateStr = tomorrowDate.toLocaleDateString("en-CA", { timeZone: MEXICO_TIMEZONE });
-  const todayEndISO = `${tomorrowDateStr}T00:00:00.000Z`; // Assumes end is UTC midnight before TZ conversion
-
-
+  
   // A simpler (potentially less DST-accurate) way:
   const todayStartApprox = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0); // Server's local time start
   const todayEndApprox = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0); // Server's local time end
@@ -147,6 +157,7 @@ exports.updateDoctorScheduleOnWrite = onDocumentWritten("appointments/{appointme
   const doctorId = apptData.doctorId;
 
   // Call the reusable function only for the affected doctor
+  // This will now also respect the "busy" check
   return calculateAndUpdateDoctorStatus(doctorId);
 });
 
@@ -178,6 +189,7 @@ exports.updateAllDoctorSchedulesPeriodically = onSchedule(
       const doctorData = doctorDoc.data();
       if (doctorData.authUID) {
         // Call the reusable calculation function for each doctor
+        // This will now also respect the "busy" check
         updatePromises.push(calculateAndUpdateDoctorStatus(doctorData.authUID));
       } else {
          console.warn(`Doctor document ${doctorDoc.id} is missing authUID.`);
