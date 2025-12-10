@@ -1,8 +1,9 @@
 // This is the complete file for functions/index.js with periodic updates
 
-const { onDocumentWritten } = require("firebase-functions/v2/firestore");
-// --- NEW: Import scheduler ---
-const { onSchedule } = require("firebase-functions/v2/scheduler");
+// --- We no longer need these, so we comment them out ---
+// const { onDocumentWritten } = require("firebase-functions/v2/firestore");
+// const { onSchedule } = require("firebase-functions/v2/scheduler");
+
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 
@@ -16,6 +17,8 @@ const MEXICO_TIMEZONE = "America/Mexico_City";
 /**
  * Helper function to format an appointment object into a nice string.
  * e.g., "John Doe (10:30 AM)"
+ * (This function is no longer called by Cloud Functions,
+ * but we'll leave it here in case you ever need it again.)
  */
 function formatApptText(appointment) {
   if (!appointment || !appointment.start || !appointment.patientName) {
@@ -30,9 +33,10 @@ function formatApptText(appointment) {
   return `${appointment.patientName} (${apptTime})`;
 }
 
-// --- NEW REUSABLE FUNCTION ---
 /**
  * Calculates and updates the current/next appointment status for a specific doctor.
+ * (This function is no longer called by Cloud Functions,
+ * but we'll leave it here in case you ever need it again.)
  * @param {string} doctorAuthUid The authUID of the doctor to update.
  * @return {Promise<void>} A promise that resolves when the update is complete.
  */
@@ -57,12 +61,6 @@ async function calculateAndUpdateDoctorStatus(doctorAuthUid) {
   const doctorRef = doctorQuery.docs[0].ref;
   const doctorData = doctorQuery.docs[0].data(); // Get the doctor's data
 
-  // --- *** NEW LOGIC BLOCK (YOUR REQUEST) *** ---
-  //
-  // We check the doctor's current status. If they are "busy" (in
-  // consultation or delayed), we must NOT overwrite their manually set
-  // autoCurrentAppointment and autoNextAppointment fields.
-  // We must check for both English and Spanish status strings.
   const currentStatus = doctorData.status;
   
   if (
@@ -72,45 +70,36 @@ async function calculateAndUpdateDoctorStatus(doctorAuthUid) {
     currentStatus === "Consulta Retrasada"    // Spanish
   ) {
     console.log(`Doctor ${doctorAuthUid} is busy with status: "${currentStatus}". Skipping automatic appointment update.`);
-    // Exit the function early to preserve the manual appointment data.
     return; 
   }
-  // --- *** END NEW LOGIC BLOCK *** ---
 
   // 2. Get the start/end of TODAY in the correct timezone.
-  // (Rest of the function continues as normal, since the doctor is not busy)
   const now = new Date();
-  
-  // A simpler (potentially less DST-accurate) way:
   const todayStartApprox = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0); // Server's local time start
   const todayEndApprox = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0); // Server's local time end
 
 
   // 3. Query all of this doctor's appointments for TODAY
-  // IMPORTANT: Ensure your 'start' field is stored consistently (e.g., ISO string UTC)
   const apptSnapshot = await db.collection("appointments")
       .where("doctorId", "==", doctorAuthUid)
-      // Query based on the stored ISO string format
-      .where("start", ">=", todayStartApprox.toISOString()) // Use approximation for simplicity
+      .where("start", ">=", todayStartApprox.toISOString()) 
       .where("start", "<", todayEndApprox.toISOString())
       .orderBy("start", "asc")
       .get();
 
   let currentText = "---";
   let nextText = "---";
-  const nowTimestamp = Date.now(); // Current UTC timestamp in milliseconds
+  const nowTimestamp = Date.now(); 
 
   if (!apptSnapshot.empty) {
-    // Map data and ensure 'start'/'end' are valid Date objects for comparison
     const appointments = apptSnapshot.docs.map(doc => {
         const data = doc.data();
-        // Ensure start/end are valid dates before proceeding
         return {
             ...data,
             startTimeMs: new Date(data.start).getTime(),
             endTimeMs: new Date(data.end).getTime()
         };
-    }).filter(appt => !isNaN(appt.startTimeMs) && !isNaN(appt.endTimeMs)); // Filter out invalid dates
+    }).filter(appt => !isNaN(appt.startTimeMs) && !isNaN(appt.endTimeMs)); 
 
 
     // Find current appointment
@@ -127,13 +116,11 @@ async function calculateAndUpdateDoctorStatus(doctorAuthUid) {
     // Determine text based on findings
      if (currentAppt) {
         currentText = formatApptText(currentAppt);
-        // Find the *next* appointment *after* the current one ends
         const nextAfterCurrent = appointments.find(appt => appt.startTimeMs >= currentAppt.endTimeMs);
         if (nextAfterCurrent) {
             nextText = formatApptText(nextAfterCurrent);
         }
     } else if (nextAppt) {
-        // No current appointment, but there is a next one today
         nextText = formatApptText(nextAppt);
     }
   }
@@ -147,26 +134,23 @@ async function calculateAndUpdateDoctorStatus(doctorAuthUid) {
 }
 
 
-// --- MODIFIED EXISTING FUNCTION ---
-/**
- * Triggers when an appointment is written. Calls the calculation function
- * for the specific doctor affected.
- */
+// --- *** DISABLED *** ---
+// By commenting this function out, new appointments will no longer
+// trigger an automatic update.
+/*
 exports.updateDoctorScheduleOnWrite = onDocumentWritten("appointments/{appointmentId}", (event) => {
   const apptData = event.data.after.data() || event.data.before.data();
   const doctorId = apptData.doctorId;
 
   // Call the reusable function only for the affected doctor
-  // This will now also respect the "busy" check
   return calculateAndUpdateDoctorStatus(doctorId);
 });
+*/
 
-
-// --- NEW SCHEDULED FUNCTION ---
-/**
- * Runs every 5 minutes to update the status for ALL doctors.
- * Schedule syntax: https://cloud.google.com/scheduler/docs/configuring/cron-job-schedules
- */
+// --- *** DISABLED *** ---
+// By commenting this function out, the 5-minute schedule
+// will no longer run and overwrite your manual changes.
+/*
 exports.updateAllDoctorSchedulesPeriodically = onSchedule(
   {
     schedule: "every 5 minutes",
@@ -189,7 +173,6 @@ exports.updateAllDoctorSchedulesPeriodically = onSchedule(
       const doctorData = doctorDoc.data();
       if (doctorData.authUID) {
         // Call the reusable calculation function for each doctor
-        // This will now also respect the "busy" check
         updatePromises.push(calculateAndUpdateDoctorStatus(doctorData.authUID));
       } else {
          console.warn(`Doctor document ${doctorDoc.id} is missing authUID.`);
@@ -202,3 +185,4 @@ exports.updateAllDoctorSchedulesPeriodically = onSchedule(
     return null;
   }
 );
+*/

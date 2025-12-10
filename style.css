@@ -237,3 +237,80 @@ header h1 {
     flex: 1 1 22%;
     min-width: 100px;
 }
+
+/* ================================================= */
+/* === SAFE KIOSK OVERRIDES (Targeted Only) ======== */
+/* ================================================= */
+
+/* 1. Force ONLY the TV page to be exactly screen size */
+body.tv-kiosk {
+    height: 100vh;        /* Exact height of the TV screen */
+    width: 100vw;         /* Exact width of the TV screen */
+    overflow: hidden;     /* Disable scrollbars completely */
+    
+    /* Flexbox to stack Header and Board vertically */
+    display: flex;
+    flex-direction: column;
+    
+    padding: 15px;
+    box-sizing: border-box;
+}
+
+/* 2. Target the header ONLY inside the TV page */
+body.tv-kiosk header {
+    flex: 0 0 auto;       
+    margin-bottom: 15px;  
+}
+
+body.tv-kiosk header h1 {
+    font-size: 2rem;      
+    margin: 0;
+}
+
+/* 3. Grid settings ONLY for the TV page container */
+body.tv-kiosk .card-layout#board-container {
+    flex: 1;              /* Fill remaining vertical space */
+    
+    display: grid;
+    /* Force exactly 5 columns */
+    grid-template-columns: repeat(5, 1fr);
+    /* Force exactly 3 rows */
+    grid-template-rows: repeat(3, 1fr);
+    
+    gap: 15px;            
+    padding: 0;
+    max-width: none;      
+    height: 100%;         
+}
+
+/* 4. Compact the Cards ONLY on the TV page */
+body.tv-kiosk .card-layout .doctor-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 12px 15px;
+    transform: none !important; 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* 5. Scale text ONLY on the TV page */
+body.tv-kiosk .card-layout .doctor-card h2 {
+    font-size: 1.3rem;    
+    margin-bottom: 2px;
+}
+
+body.tv-kiosk .card-layout .doctor-card .specialty {
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+}
+
+body.tv-kiosk .card-layout .doctor-card .status {
+    font-size: 1.1rem;    
+    padding: 5px 0;
+    margin-bottom: 5px;
+}
+
+body.tv-kiosk .card-layout .appointment-info {
+    font-size: 0.85rem;   
+    line-height: 1.3;
+}
