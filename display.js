@@ -40,8 +40,13 @@ async function fetchTexts() {
             EN: {
                 global: { mainTitle: "Doctor Appointments", loading: "Loading...", errorLoading: "Error.", noDoctors: "No doctors.", currentLabel: "Current:", nextLabel: "Next:", officeLabel: "Office:", noStatus: "N/A", unnamedDoctor: "Doctor", noSpecialty: "N/A" },
                 display: { headerDoctor: "Doctor", headerSpecialty: "Specialty", headerCurrent: "Current", headerStatus: "Status", headerOffice: "Office", headerNext: "Next" }
+            },
+            ES: {
+                global: { mainTitle: "Citas Médicas", loading: "Cargando...", errorLoading: "Error.", noDoctors: "No doctores.", currentLabel: "Actual:", nextLabel: "Siguiente:", officeLabel: "Consultorio:", noStatus: "N/A", unnamedDoctor: "Doctor", noSpecialty: "N/A" },
+                display: { headerDoctor: "Doctor", headerSpecialty: "Especialidad", headerCurrent: "Actual", headerStatus: "Estatus", headerOffice: "Consultorio", headerNext: "Siguiente" }
             }
         };
+         if (mainTitleElement) mainTitleElement.textContent = "Doctor Appointments";
     }
 }
 
@@ -85,10 +90,10 @@ async function initializeDisplay() {
  * Applies all static text to the page.
  */
 function applyStaticTexts() {
-    if (mainTitleElement) {
-        mainTitleElement.textContent = i18n.global?.mainTitle || "Doctor Appointments";
+    if (mainTitleElement && i18n.global) {
+        mainTitleElement.textContent = i18n.global.mainTitle || "Doctor Appointments";
     }
-    // Any other static text elements on index.html would be set here.
+    document.title = i18n.global?.mainTitle || "Doctor Status Board";
 }
 
 /**
@@ -121,12 +126,12 @@ function listenForDoctorUpdates() {
         if (!useCardView) {
             const headerHtml = `
                  <div class="board-header doctor-row">
-                     <div class="doctor-cell cell-name">${i18n.display?.headerDoctor}</div>
-                     <div class="doctor-cell cell-specialty">${i18n.display?.headerSpecialty}</div>
-                     <div class="doctor-cell cell-current">${i18n.display?.headerCurrent}</div>
-                     <div class="doctor-cell cell-status">${i18n.display?.headerStatus}</div>
-                     <div class="doctor-cell cell-office">${i18n.display?.headerOffice}</div>
-                     <div class="doctor-cell cell-next">${i18n.display?.headerNext}</div>
+                     <div class="doctor-cell cell-name">${i18n.display?.headerDoctor || 'Doctor'}</div>
+                     <div class="doctor-cell cell-specialty">${i18n.display?.headerSpecialty || 'Specialty'}</div>
+                     <div class="doctor-cell cell-current">${i18n.display?.headerCurrent || 'Current'}</div>
+                     <div class="doctor-cell cell-status">${i18n.display?.headerStatus || 'Status'}</div>
+                     <div class="doctor-cell cell-office">${i18n.display?.headerOffice || 'Office'}</div>
+                     <div class="doctor-cell cell-next">${i18n.display?.headerNext || 'Next'}</div>
                  </div>
              `;
             boardContainer.innerHTML = headerHtml;
@@ -138,6 +143,13 @@ function listenForDoctorUpdates() {
         snapshot.forEach(doc => {
             const doctor = doc.data();
             const doctorId = doc.id;
+	    
+	    // --- NEW: Check for 'hide' flag ---
+            // If hide is strictly true, skip this doctor
+            if (doctor.hide === true) {
+                return; // Skip to next iteration
+            }
+            // --- END NEW CHECK ---
 
             // --- START: Corrected Dynamic Logic Block ---
             let statusClass = 'available'; // Default to 'available' (green)
@@ -199,7 +211,7 @@ function listenForDoctorUpdates() {
             if (useCardView) {
                 // --- CARD HTML ---
                 itemHtml = `
-                    <div class="doctor-card status-${statusClass}" data-id="${doctorId}">
+                    <div class="doctor-card ${statusClass}" data-id="${doctorId}">
                         <h2>${doctor.displayName || i18n.global?.unnamedDoctor}</h2>
                         <p class="specialty">${doctor.specialty || i18n.global?.noSpecialty}</p>
                         <p class="status ${statusClass}">${displayStatus}</p>
@@ -217,7 +229,7 @@ function listenForDoctorUpdates() {
             } else {
                 // --- ROW HTML ---
                 itemHtml = `
-                    <div class="doctor-row status-${statusClass}" data-id="${doctorId}">
+                    <div class="doctor-row ${statusClass}" data-id="${doctorId}">
                          <div class="doctor-cell cell-name">${doctor.displayName || i18n.global?.unnamedDoctor}</div>
                          <div class="doctor-cell cell-specialty">${doctor.specialty || i18n.global?.noSpecialty}</div>
                          <div class="doctor-cell cell-current">${displayCurrent}</div>
