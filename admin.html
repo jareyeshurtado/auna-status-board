@@ -5,14 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Control Panel</title>
     
-    <link rel="stylesheet" href="style.css?v=3"> 
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-	
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    
     <style>
         /* [Your existing <style> code goes here...] */
         /* [It's all the same, so I've hidden it for brevity] */
-        /* [The CSS you added for login, sign-out, and password is all still here] */
-
         body {
             max-width: 800px;
             margin: 20px auto;
@@ -52,14 +50,48 @@
         .admin-form button:hover {
             background-color: #0056b3;
         }
+        /* Style for the appointment selection list */
+        .appointment-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .appointment-item {
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: white;
+            cursor: pointer;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+        .appointment-item:hover {
+            background-color: #f0f8ff;
+        }
+        .appointment-item.selected {
+            border: 2px solid #007bff;
+            background-color: #e6f2ff;
+        }
+        .appointment-item h4 {
+            margin: 0 0 5px 0;
+            font-size: 1.1rem;
+        }
+        .appointment-item p {
+            margin: 0;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
         .status-buttons {
             display: flex;
             gap: 10px;
+            flex-wrap: wrap; /* Allow wrapping on small screens */
+        }
+        .status-buttons button {
+            flex: 1 1 45%; /* Grow to fill space */
         }
         .status-buttons button.selected {
-            background-color: #28a745;
-            color: white;
-            border-color: #28a745;
+            border: 2px solid black !important; /* Make selection obvious */
         }
         #update-message {
             text-align: center;
@@ -125,9 +157,6 @@
             font-size: 1.0rem;
             font-weight: bold;
         }
-
-        /* --- ===== NEW STYLES (Step 2.2) ===== --- */
-        /* Tab Navigation */
         .tab-navigation {
             display: flex;
             border-bottom: 2px solid #ddd;
@@ -148,74 +177,52 @@
             color: #007bff;
             border-bottom-color: #007bff;
         }
-
-        /* Tab Content Panel */
         .tab-panel {
-            display: none; /* Hide all panels by default */
+            display: none;
         }
         .tab-panel.active {
-            display: block; /* Show only the active one */
+            display: block;
         }
-        /* --- ===== END NEW STYLES ===== --- */
-		
-		/* --- ADJUSTED CSS FOR SWEETALERT MODAL --- */
-		.swal2-html-container {
-			overflow-x: hidden !important;
-			text-align: center; /* Center align the container's text */
-		}
-
-		/* Remove or comment out this rule, it conflicts with centering */
-		/*
-		.swal2-content {
-			 text-align: left;
-			 padding: 0 1em;
-		}
-		*/
-
-		.swal2-label { /* Target the labels specifically */
-			display: block; /* Make labels block-level */
-			margin-bottom: 5px;
-			font-weight: bold;
-			text-align: left; /* Keep labels left-aligned */
-			max-width: 90%; /* Prevent labels getting too wide */
-			margin-left: auto; /* Center the label block */
-			margin-right: auto; /* Center the label block */
-		}
-
-		.swal2-input {
-			width: 90% !important; /* Make inputs slightly less than full width */
-			box-sizing: border-box;
-			margin-bottom: 15px !important;
-			/* Inputs are naturally centered by the container's text-align: center */
-		}
-
-		#swal-duration-buttons {
-			display: flex;
-			flex-wrap: wrap;
-			justify-content: center; /* Change to center for better button grouping */
-			margin-bottom: 15px;
-			max-width: 90%; /* Keep buttons contained */
-			margin-left: auto; /* Center the button block */
-			margin-right: auto; /* Center the button block */
-
-		}
-
-		#swal-duration-buttons .duration-button {
-			 /* Adjust flex-basis slightly, maybe remove if wrapping nicely */
-			flex-basis: calc(50% - 10px);
-			margin: 5px !important;
-			padding: 10px 5px;
-			box-sizing: border-box;
-			min-width: 80px;
-		}
-		/* --- END ADJUSTED CSS --- */
+        .swal2-html-container {
+            overflow-x: hidden !important;
+            text-align: center;
+        }
+        .swal2-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            text-align: left;
+            max-width: 90%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .swal2-input {
+            width: 90% !important;
+            box-sizing: border-box;
+            margin-bottom: 15px !important;
+        }
+        #swal-duration-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 15px;
+            max-width: 90%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        #swal-duration-buttons .duration-button {
+            flex-basis: calc(50% - 10px);
+            margin: 5px !important;
+            padding: 10px 5px;
+            box-sizing: border-box;
+            min-width: 80px;
+        }
     </style>
 </head>
-
 <body>
 
     <div id="login-container">
-        <h2>Doctor Admin Login</h2>
+        <h2 id="login-title-h2">Doctor Admin Login</h2> <!-- JS will set this -->
         <input type="email" id="login-email" placeholder="Email Address">
         <input type="password" id="login-password" placeholder="Password">
         <button id="login-button">Login</button>
@@ -226,28 +233,40 @@
         
         <header>
             <button id="sign-out-button">Sign Out</button>
-            <h1 id="admin-title-h1">Doctor Status Control</h1>
+            <h1 id="admin-title-h1">Doctor Status Control</h1> <!-- JS will set this -->
         </header>
 
         <nav class="tab-navigation">
             <button id="tab-status" class="tab-button active">Update Status</button>
             <button id="tab-calendar" class="tab-button">Bookings Calendar</button>
-			<button id="tab-settings" class="tab-button">Settings</button>
+            <button id="tab-settings" class="tab-button">Settings</button>
         </nav>
         <main>
 
             <div id="panel-status" class="tab-panel active">
                 <div class="admin-form">
                     
-                    <label>Set Status</label>
-                    <div class="status-buttons" id="status-buttons">
-                        <button type="button" data-status="In Consultation" id="btn-status-consultation"></button>
-                        <button type="button" data-status="Consultation Delayed" id="btn-status-delayed"></button>
-                        <button type="button" data-status="Available" id="btn-status-available"></button>
-                        <button type="button" data-status="Not Available" id="btn-status-unavailable"></button>
+                    <!-- 1. Upcoming Appointments Selection -->
+                    <label id="upcoming-label">Select Next Patient</label>
+                    <div id="upcoming-appointments-list" class="appointment-list">
+                        <!-- JS will populate this with next 3 appointments -->
+                        <div class="appointment-item placeholder">Loading upcoming appointments...</div>
                     </div>
 
-                    <button id="update-button">Update Status</button>
+                    <!-- 2. Action Button (Context Sensitive) -->
+                    <button id="main-action-button" style="background-color: #28a745; margin-bottom: 20px;">Start Consultation</button>
+
+                    <!-- 3. Manual Status Overrides -->
+                    <label id="manual-status-label" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">Manual Status Override</label>
+                    <div class="status-buttons" id="status-buttons">
+                        <button type="button" data-status="Available">Available</button>
+                        <button type="button" data-status="Consultation Delayed">Delayed</button>
+                        <button type="button" data-status="Not Available">Not Available</button>
+                        <!-- "In Consultation" is handled by the main action button now -->
+                    </div>
+                    
+                    <button id="manual-update-button" class="secondary-button" style="margin-top: 10px;">Set Manual Status</button>
+
                     <p id="update-message"></p>
                     
                 </div>
@@ -262,15 +281,15 @@
                     Click on an existing appointment to delete it.
                 </p>
             </div>
-			
-			<div id="panel-settings" class="tab-panel">
-				<div class="admin-form">
-					<h3>Account Settings</h3>
-					<button id="change-password-button" class="secondary-button">Change Password</button>
-					<p id="password-message"></p>
-					</div>
-			</div>
-			
+            
+            <div id="panel-settings" class="tab-panel">
+                <div class="admin-form">
+                    <h3 id="settings-title-h3">Account Settings</h3> <!-- JS will set this -->
+                    <button id="change-password-button" class="secondary-button">Change Password</button> <!-- JS will set this -->
+                    <p id="password-message"></p>
+                    </div>
+            </div>
+            
             </main>
     </div> 
 
@@ -287,8 +306,7 @@
     <script src='https://cdn.jsdelivr.net/npm/@fullcalendar/moment-timezone@6.1.14/index.global.min.js'></script>
     
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
-    
-    <script src="admin.js?v=3"></script>
+    <script src="admin.js"></script>
     
 </body>
 </html>
