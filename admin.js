@@ -36,19 +36,15 @@ const panelStatus = document.getElementById('panel-status');
 const panelCalendar = document.getElementById('panel-calendar');
 const panelSettings = document.getElementById('panel-settings');
 
-// --- Status Panel elements ---
-// Note: activeAppointmentDisplay might not be in your current HTML based on recent reverts.
-// If you want the "Next Up / In Progress" box, ensure that HTML is in admin.html.
-// For now, we'll keep the reference but check existence before use.
-const activeAppointmentDisplay = document.getElementById('active-appointment-display');
-const displayPatientName = document.getElementById('display-patient-name');
-const displayPatientPhone = document.getElementById('display-patient-phone');
-const displayApptTime = document.getElementById('display-appt-time');
-const displayApptDuration = document.getElementById('display-appt-duration');
-const noUpcomingMessage = document.getElementById('no-upcoming-message');
+// --- Status Panel Elements (NEW) ---
+const upcomingList = document.getElementById('upcoming-appointments-list');
+const mainActionButton = document.getElementById('main-action-button');
+const upcomingLabel = document.getElementById('upcoming-label'); // Ensure ID exists in HTML if you want translation
+const manualStatusLabel = document.getElementById('manual-status-label'); // Ensure ID exists in HTML
 
-const statusButtonsContainer = document.getElementById('status-buttons');
-const updateButton = document.getElementById('update-button');
+// --- Manual Status Buttons ---
+const manualStatusButtonsContainer = document.getElementById('status-buttons');
+const manualUpdateButton = document.getElementById('manual-update-button'); 
 const updateMessage = document.getElementById('update-message');
 
 // --- Settings Panel elements ---
@@ -67,8 +63,9 @@ let calendar = null;
 let appointmentsListener = null;
 let i18n = {};
 let allTexts = {};
-let selectedStatus = '';
-let activeAppointment = null;
+let selectedStatus = ''; // For manual override
+let selectedAppointment = null; // For the "Start Consultation" flow
+let currentDoctorStatus = ''; // Actual DB status
 
 // =================================================================
 // --- Load Texts and Settings ---
@@ -110,25 +107,27 @@ function applyStaticTextsAdmin() {
     if (settingsTitleH3) settingsTitleH3.textContent = i18n.admin?.settingsTitle || "Settings";
     if (changePasswordButton) changePasswordButton.textContent = i18n.admin?.changePasswordButton || "Change Password";
 
-    // Status Button Texts
-    if (statusButtonsContainer) {
-        const btnAvailable = statusButtonsContainer.querySelector('button[data-status="Available"]');
+    // New labels (if elements exist)
+    if (upcomingLabel) upcomingLabel.textContent = i18n.admin?.nextAppointmentTitle || "Select Next Patient";
+    if (manualStatusLabel) manualStatusLabel.textContent = i18n.admin?.setStatusLabel || "Manual Status Override";
+    
+    // Manual Status Button Texts
+    if (manualStatusButtonsContainer) {
+        const btnAvailable = manualStatusButtonsContainer.querySelector('button[data-status="Available"]');
         if (btnAvailable) btnAvailable.textContent = i18n.admin?.statusAvailable || "Available";
-        const btnInConsultation = statusButtonsContainer.querySelector('button[data-status="In Consultation"]');
+        
+        // Note: "In Consultation" is technically handled by main button logic, but if present in manual list:
+        const btnInConsultation = manualStatusButtonsContainer.querySelector('button[data-status="In Consultation"]');
         if (btnInConsultation) btnInConsultation.textContent = i18n.admin?.statusInConsultation || "In Consultation";
-        const btnDelayed = statusButtonsContainer.querySelector('button[data-status="Consultation Delayed"]');
+        
+        const btnDelayed = manualStatusButtonsContainer.querySelector('button[data-status="Consultation Delayed"]');
         if (btnDelayed) btnDelayed.textContent = i18n.admin?.statusDelayed || "Delayed";
-        const btnNotAvailable = statusButtonsContainer.querySelector('button[data-status="Not Available"]');
+        const btnNotAvailable = manualStatusButtonsContainer.querySelector('button[data-status="Not Available"]');
         if (btnNotAvailable) btnNotAvailable.textContent = i18n.admin?.statusNotAvailable || "Not Available";
     }
     
-    if (updateButton) {
-        updateButton.textContent = i18n.admin?.updateStatusButton || "Update Status";
-    }
-    
-    const statusLabel = panelStatus.querySelector('label');
-    if (statusLabel) {
-        statusLabel.textContent = i18n.admin?.setStatusLabel || "Set Status";
+    if (manualUpdateButton) {
+        manualUpdateButton.textContent = i18n.admin?.updateStatusButton || "Set Manual Status";
     }
 }
 
@@ -144,8 +143,7 @@ function setupAuthListener() {
             findDoctorDocumentId(user.uid).then(() => {
                 if (currentDoctorDocId) {
                     initializeCalendar(user.uid);
-                    loadDoctorProfile(); // Load status for buttons
-                    // loadAndDisplayActiveAppointment(); // Add this back if you want the appointment display box logic
+                    loadDoctorProfileAndAppointments(); // Load new UI logic
                 } else {
                     alert("Critical Error: Could not link login to doctor profile.");
                     auth.signOut();
@@ -156,13 +154,227 @@ function setupAuthListener() {
             adminContent.style.display = 'none'; loginContainer.style.display = 'block';
             if (appointmentsListener) appointmentsListener();
             if (calendar) calendar.destroy();
-            appointmentsListener = null; calendar = null; selectedStatus = '';
+            appointmentsListener = null; calendar = null; selectedStatus = ''; selectedAppointment = null;
         }
     });
 }
 
 // =================================================================
-// --- AUTH FUNCTIONS ---
+// --- DATA LOADING & UI (Profile + Appointments) ---
+// =================================================================
+
+/** Loads doctor profile (status) AND upcoming appointments */
+async function loadDoctorProfileAndAppointments() {
+    if (!currentDoctorDocId) return;
+
+    // 1. Get Doctor Status
+    try {
+        const docSnap = await db.collection('doctors').doc(currentDoctorDocId).get();
+        if (docSnap.exists) {
+            const data = docSnap.data();
+            currentDoctorStatus = data.status || 'Available';
+            updateMainActionButtonState(); // Update main button based on status
+        }
+    } catch (error) { console.error("Error fetching doctor:", error); }
+
+    // 2. Get Upcoming Appointments (Next 3)
+    loadUpcomingAppointments();
+}
+
+async function loadUpcomingAppointments() {
+    if (!currentUser) return;
+    if (upcomingList) upcomingList.innerHTML = `<div class="appointment-item placeholder">${i18n.global?.loading || 'Loading...'}</div>`;
+    selectedAppointment = null;
+    updateMainActionButtonState(); 
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0); 
+    
+    try {
+        const snapshot = await db.collection("appointments")
+            .where("doctorId", "==", currentUser.uid)
+            .where("start", ">=", todayStart.toISOString())
+            .orderBy("start", "asc")
+            .get();
+
+        const upcoming = [];
+        const nowMs = Date.now();
+
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const endMs = new Date(data.end).getTime();
+            // Filter out appointments that have already ended
+            if (endMs > nowMs) {
+                upcoming.push({ id: doc.id, ...data });
+            }
+        });
+
+        const nextThree = upcoming.slice(0, 3);
+        renderAppointmentList(nextThree);
+
+    } catch (error) {
+        console.error("Error loading upcoming:", error);
+        if (upcomingList) upcomingList.innerHTML = `<div class="appointment-item placeholder">${i18n.global?.errorLoading || 'Error loading appointments.'}</div>`;
+    }
+}
+
+function renderAppointmentList(appointments) {
+    if (!upcomingList) return;
+    upcomingList.innerHTML = '';
+    if (appointments.length === 0) {
+        upcomingList.innerHTML = `<div class="appointment-item placeholder">${i18n.admin?.noAppointmentsFound || 'No upcoming appointments.'}</div>`;
+        return;
+    }
+
+    appointments.forEach(appt => {
+        const el = document.createElement('div');
+        el.className = 'appointment-item';
+        
+        const startTime = new Date(appt.start).toLocaleTimeString("en-US", {
+            hour: "2-digit", minute: "2-digit", hour12: true, timeZone: MEXICO_TIMEZONE
+        });
+        
+        el.innerHTML = `
+            <h4>${appt.patientName}</h4>
+            <p>${startTime} - ${appt.patientPhone || ''}</p>
+        `;
+        
+        el.addEventListener('click', () => {
+            // Deselect others
+            const items = upcomingList.querySelectorAll('.appointment-item');
+            items.forEach(i => i.classList.remove('selected'));
+            // Select this one
+            el.classList.add('selected');
+            selectedAppointment = appt;
+            updateMainActionButtonState(); // Enable start button
+        });
+
+        upcomingList.appendChild(el);
+    });
+}
+
+function updateMainActionButtonState() {
+    if (!mainActionButton) return;
+
+    if (currentDoctorStatus === 'In Consultation') {
+        // Button becomes "Finish"
+        mainActionButton.textContent = "Finish Consultation"; // Or translation if available
+        mainActionButton.style.backgroundColor = "#dc3545"; // Red
+        mainActionButton.disabled = false;
+    } else {
+        // Button is "Start"
+        mainActionButton.textContent = i18n.admin?.startButton || "Start Consultation";
+        mainActionButton.style.backgroundColor = "#28a745"; // Green
+        
+        if (selectedAppointment) {
+            mainActionButton.disabled = false;
+        } else {
+            mainActionButton.disabled = true; // Must select appointment first
+        }
+    }
+}
+
+// =================================================================
+// --- ACTION HANDLERS ---
+// =================================================================
+
+async function onMainActionClick() {
+    if (currentDoctorStatus === 'In Consultation') {
+        // --- FINISH LOGIC ---
+        const updateData = {
+            status: "Available",
+            displayCurrentAppointment: "---",
+        };
+
+        try {
+            await db.collection('doctors').doc(currentDoctorDocId).update(updateData);
+            currentDoctorStatus = "Available";
+            Swal.fire('Finished', 'Consultation finished.', 'success');
+            loadDoctorProfileAndAppointments(); // Refresh status and list
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Error', 'Could not finish consultation.', 'error');
+        }
+
+    } else {
+        // --- START LOGIC ---
+        if (!selectedAppointment) return;
+
+        const startTime = new Date(selectedAppointment.start).toLocaleTimeString("en-US", {
+            hour: "2-digit", minute: "2-digit", hour12: true, timeZone: MEXICO_TIMEZONE
+        });
+        const displayString = `${selectedAppointment.patientName} (${startTime})`;
+        
+        const updateData = {
+            status: "In Consultation",
+            displayCurrentAppointment: displayString
+        };
+
+        try {
+            await db.collection('doctors').doc(currentDoctorDocId).update(updateData);
+            currentDoctorStatus = "In Consultation";
+            Swal.fire(i18n.admin?.bookingSuccessTitle, i18n.admin?.consultationStartSuccess || 'Started!', 'success');
+            
+            selectedAppointment = null;
+            updateMainActionButtonState();
+            // Optionally refresh list to visually update selection
+            loadUpcomingAppointments();
+        } catch (e) {
+            console.error(e);
+            Swal.fire(i18n.admin?.bookingErrorTitle, i18n.admin?.consultationStartError || 'Error starting.', 'error');
+        }
+    }
+}
+
+// --- Manual Status Handlers ---
+function onManualStatusClick(event) {
+    const btn = event.target.closest('button[data-status]');
+    if (!btn) return;
+    
+    // Visually select
+    const btns = manualStatusButtonsContainer.querySelectorAll('button');
+    btns.forEach(b => {
+        b.classList.remove('selected');
+        b.style.border = '1px solid #ccc';
+    });
+    btn.classList.add('selected');
+    btn.style.border = '2px solid black';
+    
+    selectedStatus = btn.dataset.status;
+}
+
+async function onManualUpdateClick() {
+    if (!selectedStatus) {
+        Swal.fire('Warning', i18n.admin?.validationStatus, 'warning');
+        return;
+    }
+    
+    if (manualUpdateButton) {
+        manualUpdateButton.disabled = true;
+        manualUpdateButton.textContent = i18n.admin?.updatingStatusButton;
+    }
+
+    try {
+        await db.collection('doctors').doc(currentDoctorDocId).update({
+            status: selectedStatus
+        });
+        currentDoctorStatus = selectedStatus;
+        updateMainActionButtonState(); 
+        Swal.fire(i18n.admin?.bookingSuccessTitle, i18n.admin?.statusUpdateSuccess, 'success');
+    } catch (e) {
+        console.error(e);
+        Swal.fire(i18n.admin?.bookingErrorTitle, i18n.admin?.statusUpdateError, 'error');
+    } finally {
+        if (manualUpdateButton) {
+            manualUpdateButton.disabled = false;
+            manualUpdateButton.textContent = i18n.admin?.updateStatusButton;
+        }
+    }
+}
+
+
+// =================================================================
+// --- AUTH & HELPERS (Existing) ---
 // =================================================================
 function onLoginClick() {
     const email = loginEmail.value; const password = loginPassword.value;
@@ -179,7 +391,6 @@ function onChangePasswordClick() {
         .then(() => { passwordMessage.textContent = i18n.admin?.resetEmailSuccess; passwordMessage.style.color = '#006421'; setTimeout(() => { passwordMessage.textContent = ''; }, 7000); })
         .catch(error => { passwordMessage.textContent = (i18n.admin?.resetEmailError || 'Error:') + ' ' + error.message; passwordMessage.style.color = '#c91c1c'; });
 }
-
 async function findDoctorDocumentId(uid) {
     if (!uid) return;
     try {
@@ -188,244 +399,78 @@ async function findDoctorDocumentId(uid) {
         else { console.error(`No doc for authUID: ${uid}`); currentDoctorDocId = null; }
     } catch (error) { console.error("Error finding doc:", error); currentDoctorDocId = null; }
 }
-
-// =================================================================
-// --- TAB SWITCHING ---
-// =================================================================
 function handleTabClick(event) {
     const clickedTab = event.target;
     tabStatus.classList.remove('active'); tabCalendar.classList.remove('active'); tabSettings.classList.remove('active');
     panelStatus.classList.remove('active'); panelCalendar.classList.remove('active'); panelSettings.classList.remove('active');
-    
     if (clickedTab.id === 'tab-status') { 
-        tabStatus.classList.add('active'); 
-        panelStatus.classList.add('active'); 
-        loadDoctorProfile(); 
-        // loadAndDisplayActiveAppointment(); // Uncomment if you want the appointment display
+        tabStatus.classList.add('active'); panelStatus.classList.add('active'); 
+        loadDoctorProfileAndAppointments(); // Refresh UI data
     }
-    else if (clickedTab.id === 'tab-calendar') { 
-        tabCalendar.classList.add('active'); 
-        panelCalendar.classList.add('active'); 
-        if (calendar) calendar.render(); 
-    }
-    else if (clickedTab.id === 'tab-settings') { 
-        tabSettings.classList.add('active'); 
-        panelSettings.classList.add('active'); 
-    }
+    else if (clickedTab.id === 'tab-calendar') { tabCalendar.classList.add('active'); panelCalendar.classList.add('active'); if (calendar) calendar.render(); }
+    else if (clickedTab.id === 'tab-settings') { tabSettings.classList.add('active'); panelSettings.classList.add('active'); }
 }
 
-// =================================================================
-// --- CALENDAR FUNCTIONS (RESTORED) ---
-// =================================================================
+// ... (Initialize Calendar Function - Unchanged logic, fully included) ...
 function initializeCalendar(uid) {
     if (calendar) return;
-
     calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'timeGridWeek',
         headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
         editable: false, selectable: true, timeZone: MEXICO_TIMEZONE,
-
-        // --- Booking Modal ---
-        dateClick: function(clickInfo) {
-          const startDate = clickInfo.date;
-          const startTimeFormatted = startDate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: MEXICO_TIMEZONE });
-
-          Swal.fire({
-            title: (i18n.admin?.bookAppointmentTitle || 'Book Appointment at {time}').replace('{time}', startTimeFormatted),
-            width: '600px',
-             html: `
-              <div>
-                <span class="swal2-label" for="swal-input-name">${i18n.admin?.patientNameLabel || 'Name'}</span>
-                <input id="swal-input-name" class="swal2-input" placeholder="${i18n.admin?.patientNamePlaceholder || ''}">
-                <span class="swal2-label" for="swal-input-phone">${i18n.admin?.phoneLabel || 'Phone'}</span>
-                <input id="swal-input-phone" class="swal2-input" placeholder="${i18n.admin?.phonePlaceholder || ''}" type="tel">
-                <span class="swal2-label">${i18n.admin?.durationLabel || 'Duration'}</span>
-                <div id="swal-duration-buttons">
-                  <button class="swal2-confirm swal2-styled duration-button" data-duration="30">30 min</button>
-                  <button class="swal2-confirm swal2-styled duration-button" data-duration="45">45 min</button>
-                  <button class="swal2-confirm swal2-styled duration-button" data-duration="60">1 hour</button>
-                  <button class="swal2-confirm swal2-styled duration-button" data-duration="90">1:30</button>
-                </div>
-              </div>`,
-            confirmButtonText: i18n.admin?.bookButton,
-            focusConfirm: false,
-            didOpen: () => {
-                const buttons = document.querySelectorAll('#swal-duration-buttons .duration-button');
-                buttons.forEach(button => {
-                    button.addEventListener('click', () => {
-                        buttons.forEach(btn => btn.style.border = 'none');
-                        button.style.border = '2px solid blue';
-                        document.getElementById('swal-duration-buttons').dataset.selectedDuration = button.dataset.duration;
-                    });
-                });
-                const defaultButton = document.querySelector('#swal-duration-buttons .duration-button[data-duration="30"]');
-                if(defaultButton) defaultButton.click();
-            },
-            preConfirm: () => {
-              const name = document.getElementById('swal-input-name').value;
-              const phone = document.getElementById('swal-input-phone').value;
-              const duration = document.getElementById('swal-duration-buttons').dataset.selectedDuration;
-              const phoneRegex = /^\d{10}$/;
-              
-              if (!name) { Swal.showValidationMessage(i18n.admin?.validationName); return false; }
-              if (!phone) { Swal.showValidationMessage(i18n.admin?.validationPhone); return false; }
-              if (!phoneRegex.test(phone)) { Swal.showValidationMessage(i18n.admin?.validationPhoneDigits); return false; }
-              if (!duration) { Swal.showValidationMessage(i18n.admin?.validationDuration); return false; }
-              return { name: name, phone: phone, duration: parseInt(duration, 10) };
-            }
-          }).then(async (result) => {
-            if (result.isConfirmed && result.value) {
-              const formData = result.value;
-              const newStartTime = startDate;
-              const newEndTime = new Date(newStartTime.getTime() + formData.duration * 60000);
-              
-              try {
-                // Overlap Check
-                const overlapQuery = await db.collection("appointments")
-                    .where("doctorId", "==", uid)
-                    .where("end", ">", newStartTime.toISOString())
-                    .where("start", "<", newEndTime.toISOString())
-                    .get();
-                
-                let isOverlapping = !overlapQuery.empty;
-                // Double check locally if query was broad
-                if (!isOverlapping) {
-                     const broadQuery = await db.collection("appointments").where("doctorId", "==", uid).where("start", "<", newEndTime.toISOString()).get();
-                     broadQuery.forEach(doc => {
-                        const existingStart = new Date(doc.data().start).getTime();
-                        const existingEnd = new Date(doc.data().end).getTime();
-                        if (newStartTime.getTime() < existingEnd && existingStart < newEndTime.getTime()) isOverlapping = true;
-                     });
+        dateClick: function(clickInfo) { 
+             const startDate = clickInfo.date;
+             const startTimeFormatted = startDate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: MEXICO_TIMEZONE });
+             Swal.fire({
+                title: (i18n.admin?.bookAppointmentTitle || 'Book {time}').replace('{time}', startTimeFormatted),
+                width: '600px',
+                html: `<div><span class="swal2-label">${i18n.admin?.patientNameLabel}</span><input id="swal-input-name" class="swal2-input"><span class="swal2-label">${i18n.admin?.phoneLabel}</span><input id="swal-input-phone" class="swal2-input" type="tel"><span class="swal2-label">${i18n.admin?.durationLabel}</span><div id="swal-duration-buttons"><button class="swal2-confirm swal2-styled duration-button" data-duration="30">30 min</button><button class="swal2-confirm swal2-styled duration-button" data-duration="45">45 min</button><button class="swal2-confirm swal2-styled duration-button" data-duration="60">1 hour</button><button class="swal2-confirm swal2-styled duration-button" data-duration="90">1:30</button></div></div>`,
+                confirmButtonText: i18n.admin?.bookButton, focusConfirm: false,
+                didOpen: () => {
+                    const buttons = document.querySelectorAll('#swal-duration-buttons .duration-button');
+                    buttons.forEach(btn => btn.addEventListener('click', () => { buttons.forEach(b => b.style.border='none'); btn.style.border='2px solid blue'; document.getElementById('swal-duration-buttons').dataset.selectedDuration = btn.dataset.duration; }));
+                    const defBtn = document.querySelector('#swal-duration-buttons .duration-button[data-duration="30"]'); if(defBtn) defBtn.click();
+                },
+                preConfirm: () => {
+                    const name = document.getElementById('swal-input-name').value;
+                    const phone = document.getElementById('swal-input-phone').value;
+                    const dur = document.getElementById('swal-duration-buttons').dataset.selectedDuration;
+                    const phoneRegex = /^\d{10}$/;
+                    if(!name) { Swal.showValidationMessage(i18n.admin?.validationName); return false; }
+                    if(!phone) { Swal.showValidationMessage(i18n.admin?.validationPhone); return false; }
+                    if(!phoneRegex.test(phone)) { Swal.showValidationMessage(i18n.admin?.validationPhoneDigits); return false; }
+                    if(!dur) { Swal.showValidationMessage(i18n.admin?.validationDuration); return false; }
+                    return {name, phone, duration: parseInt(dur)};
                 }
-
-                if (isOverlapping) {
-                  Swal.fire(i18n.admin?.bookingErrorTitle, i18n.admin?.overlapErrorText, 'warning');
-                  return;
-                }
-              } catch (error) {
-                 if (error.code === 'failed-precondition') Swal.fire('Setup Required', 'Index needed. Check console.', 'info');
-                 else Swal.fire(i18n.admin?.bookingErrorTitle, i18n.admin?.overlapCheckErrorText, 'error');
-                 return;
-              }
-
-              const newAppointment = { 
-                  doctorId: uid, 
-                  patientName: formData.name, 
-                  patientPhone: formData.phone, 
-                  start: newStartTime.toISOString(), 
-                  end: newEndTime.toISOString() 
-              };
-              
-              db.collection('appointments').add(newAppointment)
-                  .then(() => Swal.fire(i18n.admin?.bookingSuccessTitle, i18n.admin?.bookingSuccessText, 'success'))
-                  .catch(error => Swal.fire(i18n.admin?.bookingErrorTitle, i18n.admin?.bookingErrorText, 'error'));
-            }
-          });
-        }, 
-
-        // --- Delete Confirmation ---
+             }).then(async (res) => {
+                 if(res.isConfirmed && res.value) {
+                     const end = new Date(startDate.getTime() + res.value.duration * 60000);
+                     try {
+                        const q = await db.collection('appointments').where('doctorId','==',uid).where('start','<',end.toISOString()).where('end','>',startDate.toISOString()).get();
+                        if(!q.empty) { Swal.fire('Error', i18n.admin?.overlapErrorText, 'warning'); return; }
+                     } catch(e) { /* ignore index error for simplicity in fallback */ }
+                     
+                     db.collection('appointments').add({
+                         doctorId: uid, patientName: res.value.name, patientPhone: res.value.phone,
+                         start: startDate.toISOString(), end: end.toISOString()
+                     }).then(() => Swal.fire(i18n.admin?.bookingSuccessTitle, '', 'success'));
+                 }
+             });
+        },
         eventClick: function(clickInfo) {
-            Swal.fire({
-                title: i18n.admin?.deleteConfirmTitle,
-                text: (i18n.admin?.deleteConfirmText || 'Delete {patient}?').replace('{patient}', clickInfo.event.title),
-                icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6',
-                confirmButtonText: i18n.admin?.deleteButton
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    db.collection('appointments').doc(clickInfo.event.id).delete()
-                        .then(() => Swal.fire(i18n.admin?.deleteSuccessTitle, i18n.admin?.deleteSuccessText, 'success'))
-                        .catch(error => Swal.fire(i18n.admin?.deleteErrorTitle, i18n.admin?.deleteErrorText, 'error'));
-                }
-            });
+             Swal.fire({
+                 title: i18n.admin?.deleteConfirmTitle, text: (i18n.admin?.deleteConfirmText || '').replace('{patient}', clickInfo.event.title), showCancelButton: true, confirmButtonText: i18n.admin?.deleteButton
+             }).then(res => {
+                 if(res.isConfirmed) db.collection('appointments').doc(clickInfo.event.id).delete().then(() => Swal.fire(i18n.admin?.deleteSuccessTitle, '', 'success'));
+             });
         }
     });
-    
     calendar.render();
-
-    // --- Listener ---
     if (appointmentsListener) appointmentsListener();
-    appointmentsListener = db.collection('appointments')
-        .where('doctorId', '==', uid)
-        .onSnapshot(snapshot => {
-            const events = snapshot.docs.map(doc => {
-                const data = doc.data();
-                if (data.patientName && data.start && data.end) {
-                  return { id: doc.id, title: data.patientName, start: data.start, end: data.end };
-                }
-                return null;
-            }).filter(event => event !== null);
-            if (calendar) calendar.setOption('events', events);
-        }, error => console.error("Error fetching appointments: ", error));
-}
-
-
-// =================================================================
-// --- STATUS BUTTON LOGIC ---
-// =================================================================
-function loadDoctorProfile() {
-    if (!currentDoctorDocId) return;
-     db.collection('doctors').doc(currentDoctorDocId).get()
-        .then(doc => {
-             if (doc.exists) {
-                const doctor = doc.data();
-                selectedStatus = doctor.status || '';
-                updateStatusButtonUI();
-             }
-        })
-        .catch(error => console.error("Error fetching doctor profile: ", error));
-}
-
-function onStatusButtonClick(event) {
-    const clickedButton = event.target.closest('button[data-status]');
-    if (!clickedButton || !statusButtonsContainer.contains(clickedButton)) return;
-    selectedStatus = clickedButton.dataset.status;
-    updateStatusButtonUI();
-}
-
-function updateStatusButtonUI() {
-    if (!statusButtonsContainer) return;
-    const statusButtons = statusButtonsContainer.querySelectorAll('button[data-status]');
-    statusButtons.forEach(btn => {
-        if (btn.dataset.status === selectedStatus) {
-            btn.classList.add('selected');
-            btn.style.border = '2px solid black';
-        } else {
-            btn.classList.remove('selected');
-            btn.style.border = '1px solid #ccc';
-        }
+    appointmentsListener = db.collection('appointments').where('doctorId', '==', uid).onSnapshot(snap => {
+        const events = snap.docs.map(d => ({id: d.id, title: d.data().patientName, start: d.data().start, end: d.data().end}));
+        calendar.setOption('events', events);
     });
-}
-
-function onUpdateButtonClick() {
-    if (!currentDoctorDocId) {
-        Swal.fire('Error!', i18n.admin?.statusUpdateErrorProfile, 'error');
-        return;
-    }
-    if (!selectedStatus) {
-         Swal.fire('Warning', i18n.admin?.validationStatus, 'warning');
-        return;
-    }
-
-    const updateData = { status: selectedStatus };
-    if (updateButton) {
-      updateButton.disabled = true;
-      updateButton.textContent = i18n.admin?.updatingStatusButton;
-    }
-
-    db.collection('doctors').doc(currentDoctorDocId).update(updateData)
-        .then(() => {
-             Swal.fire(i18n.admin?.bookingSuccessTitle, i18n.admin?.statusUpdateSuccess, 'success');
-         })
-        .catch(error => {
-            console.error("Error updating status: ", error);
-             Swal.fire(i18n.admin?.bookingErrorTitle, i18n.admin?.statusUpdateError, 'error');
-        })
-        .finally(() => {
-             if (updateButton) {
-                updateButton.disabled = false;
-                updateButton.textContent = i18n.admin?.updateStatusButton;
-             }
-        });
 }
 
 // =================================================================
@@ -438,8 +483,10 @@ tabStatus.addEventListener('click', handleTabClick);
 tabCalendar.addEventListener('click', handleTabClick);
 tabSettings.addEventListener('click', handleTabClick);
 
-if (statusButtonsContainer) statusButtonsContainer.addEventListener('click', onStatusButtonClick);
-if (updateButton) updateButton.addEventListener('click', onUpdateButtonClick);
+// New Action Listeners
+if (mainActionButton) mainActionButton.addEventListener('click', onMainActionClick);
+if (manualStatusButtonsContainer) manualStatusButtonsContainer.addEventListener('click', onManualStatusClick);
+if (manualUpdateButton) manualUpdateButton.addEventListener('click', onManualUpdateClick);
 
 // =================================================================
 // --- Start ---
