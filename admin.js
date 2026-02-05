@@ -36,11 +36,11 @@ const panelStatus = document.getElementById('panel-status');
 const panelCalendar = document.getElementById('panel-calendar');
 const panelSettings = document.getElementById('panel-settings');
 
-// --- Status Panel Elements (NEW) ---
+// --- Status Panel Elements ---
 const upcomingList = document.getElementById('upcoming-appointments-list');
 const mainActionButton = document.getElementById('main-action-button');
-const upcomingLabel = document.getElementById('upcoming-label'); // Ensure ID exists in HTML if you want translation
-const manualStatusLabel = document.getElementById('manual-status-label'); // Ensure ID exists in HTML
+const upcomingLabel = document.getElementById('upcoming-label'); 
+const manualStatusLabel = document.getElementById('manual-status-label'); 
 
 // --- Manual Status Buttons ---
 const manualStatusButtonsContainer = document.getElementById('status-buttons');
@@ -63,9 +63,11 @@ let calendar = null;
 let appointmentsListener = null;
 let i18n = {};
 let allTexts = {};
-let selectedStatus = ''; // For manual override
-let selectedAppointment = null; // For the "Start Consultation" flow
-let currentDoctorStatus = ''; // Actual DB status
+let selectedStatus = ''; 
+let selectedAppointment = null; 
+let currentDoctorStatus = ''; 
+// NEW: Track the ID of the appointment currently in consultation to update it later
+let currentConsultationApptId = null; 
 
 // =================================================================
 // --- Load Texts and Settings ---
@@ -107,19 +109,17 @@ function applyStaticTextsAdmin() {
     if (settingsTitleH3) settingsTitleH3.textContent = i18n.admin?.settingsTitle || "Settings";
     if (changePasswordButton) changePasswordButton.textContent = i18n.admin?.changePasswordButton || "Change Password";
 
-    // New labels (if elements exist)
     if (upcomingLabel) upcomingLabel.textContent = i18n.admin?.nextAppointmentTitle || "Select Next Patient";
     if (manualStatusLabel) manualStatusLabel.textContent = i18n.admin?.setStatusLabel || "Manual Status Override";
     
-    // Manual Status Button Texts
+    // Check if we need to update the button text dynamically based on selection/status
+    // This is handled in updateMainActionButtonState, but defaults can be set here
+    
     if (manualStatusButtonsContainer) {
         const btnAvailable = manualStatusButtonsContainer.querySelector('button[data-status="Available"]');
         if (btnAvailable) btnAvailable.textContent = i18n.admin?.statusAvailable || "Available";
-        
-        // Note: "In Consultation" is technically handled by main button logic, but if present in manual list:
         const btnInConsultation = manualStatusButtonsContainer.querySelector('button[data-status="In Consultation"]');
         if (btnInConsultation) btnInConsultation.textContent = i18n.admin?.statusInConsultation || "In Consultation";
-        
         const btnDelayed = manualStatusButtonsContainer.querySelector('button[data-status="Consultation Delayed"]');
         if (btnDelayed) btnDelayed.textContent = i18n.admin?.statusDelayed || "Delayed";
         const btnNotAvailable = manualStatusButtonsContainer.querySelector('button[data-status="Not Available"]');
@@ -143,7 +143,7 @@ function setupAuthListener() {
             findDoctorDocumentId(user.uid).then(() => {
                 if (currentDoctorDocId) {
                     initializeCalendar(user.uid);
-                    loadDoctorProfileAndAppointments(); // Load new UI logic
+                    loadDoctorProfileAndAppointments(); 
                 } else {
                     alert("Critical Error: Could not link login to doctor profile.");
                     auth.signOut();
@@ -155,6 +155,7 @@ function setupAuthListener() {
             if (appointmentsListener) appointmentsListener();
             if (calendar) calendar.destroy();
             appointmentsListener = null; calendar = null; selectedStatus = ''; selectedAppointment = null;
+            currentConsultationApptId = localStorage.getItem('currentConsultationApptId'); // Try to recover if page reloaded
         }
     });
 }
@@ -173,7 +174,17 @@ async function loadDoctorProfileAndAppointments() {
         if (docSnap.exists) {
             const data = docSnap.data();
             currentDoctorStatus = data.status || 'Available';
-            updateMainActionButtonState(); // Update main button based on status
+            
+            // NEW: If we are in consultation, try to recover the ID from localStorage
+            if (currentDoctorStatus === 'In Consultation') {
+                 currentConsultationApptId = localStorage.getItem('currentConsultationApptId');
+            } else {
+                 // If not in consultation, ensure ID is cleared
+                 currentConsultationApptId = null;
+                 localStorage.removeItem('currentConsultationApptId');
+            }
+            
+            updateMainActionButtonState(); 
         }
     } catch (error) { console.error("Error fetching doctor:", error); }
 
@@ -203,8 +214,10 @@ async function loadUpcomingAppointments() {
         snapshot.forEach(doc => {
             const data = doc.data();
             const endMs = new Date(data.end).getTime();
-            // Filter out appointments that have already ended
-            if (endMs > nowMs) {
+            
+            // FILTER 1: Is it in the future (or current)?
+            // FILTER 2: Is it NOT completed?
+            if (endMs > nowMs && data.status !== 'completed') {
                 upcoming.push({ id: doc.id, ...data });
             }
         });
@@ -257,19 +270,17 @@ function updateMainActionButtonState() {
     if (!mainActionButton) return;
 
     if (currentDoctorStatus === 'In Consultation') {
-        // Button becomes "Finish"
-        mainActionButton.textContent = "Finish Consultation"; // Or translation if available
+        mainActionButton.textContent = "Finish Consultation"; // Add to i18n if desired
         mainActionButton.style.backgroundColor = "#dc3545"; // Red
         mainActionButton.disabled = false;
     } else {
-        // Button is "Start"
         mainActionButton.textContent = i18n.admin?.startButton || "Start Consultation";
         mainActionButton.style.backgroundColor = "#28a745"; // Green
         
         if (selectedAppointment) {
             mainActionButton.disabled = false;
         } else {
-            mainActionButton.disabled = true; // Must select appointment first
+            mainActionButton.disabled = true; 
         }
     }
 }
@@ -287,10 +298,23 @@ async function onMainActionClick() {
         };
 
         try {
+            // 1. Update Doctor Status
             await db.collection('doctors').doc(currentDoctorDocId).update(updateData);
+            
+            // 2. NEW: Update Appointment Status to 'completed'
+            // We use the ID stored when we started the consultation
+            if (currentConsultationApptId) {
+                await db.collection('appointments').doc(currentConsultationApptId).update({
+                    status: 'completed'
+                });
+                // Clear the ID
+                localStorage.removeItem('currentConsultationApptId');
+                currentConsultationApptId = null;
+            }
+
             currentDoctorStatus = "Available";
             Swal.fire('Finished', 'Consultation finished.', 'success');
-            loadDoctorProfileAndAppointments(); // Refresh status and list
+            loadUpcomingAppointments(); // This will re-fetch, and the 'completed' logic will filter it out!
         } catch (e) {
             console.error(e);
             Swal.fire('Error', 'Could not finish consultation.', 'error');
@@ -312,13 +336,17 @@ async function onMainActionClick() {
 
         try {
             await db.collection('doctors').doc(currentDoctorDocId).update(updateData);
+            
+            // NEW: Store the ID of this appointment so we can finish it later
+            currentConsultationApptId = selectedAppointment.id;
+            localStorage.setItem('currentConsultationApptId', currentConsultationApptId); // Persist through refresh
+
             currentDoctorStatus = "In Consultation";
             Swal.fire(i18n.admin?.bookingSuccessTitle, i18n.admin?.consultationStartSuccess || 'Started!', 'success');
             
             selectedAppointment = null;
             updateMainActionButtonState();
-            // Optionally refresh list to visually update selection
-            loadUpcomingAppointments();
+            loadUpcomingAppointments(); // Refresh list immediately
         } catch (e) {
             console.error(e);
             Swal.fire(i18n.admin?.bookingErrorTitle, i18n.admin?.consultationStartError || 'Error starting.', 'error');
@@ -326,12 +354,11 @@ async function onMainActionClick() {
     }
 }
 
-// --- Manual Status Handlers ---
+// --- Manual Status Handlers (Unchanged) ---
 function onManualStatusClick(event) {
     const btn = event.target.closest('button[data-status]');
     if (!btn) return;
     
-    // Visually select
     const btns = manualStatusButtonsContainer.querySelectorAll('button');
     btns.forEach(b => {
         b.classList.remove('selected');
@@ -374,7 +401,22 @@ async function onManualUpdateClick() {
 
 
 // =================================================================
-// --- AUTH & HELPERS (Existing) ---
+// --- EVENT LISTENERS ---
+// =================================================================
+loginButton.addEventListener('click', onLoginClick);
+signOutButton.addEventListener('click', onSignOutClick);
+changePasswordButton.addEventListener('click', onChangePasswordClick);
+tabStatus.addEventListener('click', handleTabClick);
+tabCalendar.addEventListener('click', handleTabClick);
+tabSettings.addEventListener('click', handleTabClick);
+
+if (mainActionButton) mainActionButton.addEventListener('click', onMainActionClick);
+if (manualStatusButtonsContainer) manualStatusButtonsContainer.addEventListener('click', onManualStatusClick);
+if (manualUpdateButton) manualUpdateButton.addEventListener('click', onManualUpdateClick);
+
+
+// =================================================================
+// --- AUTH & HELPERS ---
 // =================================================================
 function onLoginClick() {
     const email = loginEmail.value; const password = loginPassword.value;
@@ -405,7 +447,7 @@ function handleTabClick(event) {
     panelStatus.classList.remove('active'); panelCalendar.classList.remove('active'); panelSettings.classList.remove('active');
     if (clickedTab.id === 'tab-status') { 
         tabStatus.classList.add('active'); panelStatus.classList.add('active'); 
-        loadDoctorProfileAndAppointments(); // Refresh UI data
+        loadDoctorProfileAndAppointments(); 
     }
     else if (clickedTab.id === 'tab-calendar') { tabCalendar.classList.add('active'); panelCalendar.classList.add('active'); if (calendar) calendar.render(); }
     else if (clickedTab.id === 'tab-settings') { tabSettings.classList.add('active'); panelSettings.classList.add('active'); }
@@ -448,11 +490,12 @@ function initializeCalendar(uid) {
                      try {
                         const q = await db.collection('appointments').where('doctorId','==',uid).where('start','<',end.toISOString()).where('end','>',startDate.toISOString()).get();
                         if(!q.empty) { Swal.fire('Error', i18n.admin?.overlapErrorText, 'warning'); return; }
-                     } catch(e) { /* ignore index error for simplicity in fallback */ }
+                     } catch(e) { /* ignore index error for simplicity */ }
                      
                      db.collection('appointments').add({
                          doctorId: uid, patientName: res.value.name, patientPhone: res.value.phone,
                          start: startDate.toISOString(), end: end.toISOString()
+                         // 'status' field is initially undefined (or could be 'scheduled')
                      }).then(() => Swal.fire(i18n.admin?.bookingSuccessTitle, '', 'success'));
                  }
              });
@@ -472,21 +515,6 @@ function initializeCalendar(uid) {
         calendar.setOption('events', events);
     });
 }
-
-// =================================================================
-// --- EVENT LISTENERS ---
-// =================================================================
-loginButton.addEventListener('click', onLoginClick);
-signOutButton.addEventListener('click', onSignOutClick);
-changePasswordButton.addEventListener('click', onChangePasswordClick);
-tabStatus.addEventListener('click', handleTabClick);
-tabCalendar.addEventListener('click', handleTabClick);
-tabSettings.addEventListener('click', handleTabClick);
-
-// New Action Listeners
-if (mainActionButton) mainActionButton.addEventListener('click', onMainActionClick);
-if (manualStatusButtonsContainer) manualStatusButtonsContainer.addEventListener('click', onManualStatusClick);
-if (manualUpdateButton) manualUpdateButton.addEventListener('click', onManualUpdateClick);
 
 // =================================================================
 // --- Start ---
