@@ -24,13 +24,20 @@ function formatApptText(appointment) {
   if (!appointment || !appointment.start || !appointment.patientName) {
     return "---"; // Handle cases where data might be missing
   }
+  
+  const initials = appointment.patientName
+      .trim()
+      .split(/\s+/)
+      .map(part => part[0].toUpperCase())
+      .join('');
+	  
   const apptTime = new Date(appointment.start).toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
     hour12: true,
     timeZone: MEXICO_TIMEZONE,
   });
-  return `${appointment.patientName} (${apptTime})`;
+  return `${initials} (${apptTime})`;
 }
 
 /**

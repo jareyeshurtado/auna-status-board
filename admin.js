@@ -327,7 +327,9 @@ async function onMainActionClick() {
         const startTime = new Date(selectedAppointment.start).toLocaleTimeString("en-US", {
             hour: "2-digit", minute: "2-digit", hour12: true, timeZone: MEXICO_TIMEZONE
         });
-        const displayString = `${selectedAppointment.patientName} (${startTime})`;
+		
+		const patientInitials = getInitials(selectedAppointment.patientName);
+        const displayString = `${patientInitials} (${startTime})`;
         
         const updateData = {
             status: "In Consultation",
@@ -514,6 +516,14 @@ function initializeCalendar(uid) {
         const events = snap.docs.map(d => ({id: d.id, title: d.data().patientName, start: d.data().start, end: d.data().end}));
         calendar.setOption('events', events);
     });
+}
+function getInitials(name) {
+    if (!name) return "";
+    return name
+        .trim()              // Remove extra spaces around the name
+        .split(/\s+/)        // Split by spaces (handles single or multiple spaces)
+        .map(word => word[0].toUpperCase()) // Take the first letter of each word
+        .join('');           // Join them together
 }
 
 // =================================================================
