@@ -91,7 +91,7 @@
   },
   "ES": {
     "global": {
-      "mainTitle": "Auna Consultorios",
+      "mainTitle": "Bienvenido a AUNA. Espere a que su turno sea llamada en pantalla con las iniciales de su nombre",
       "loading": "Cargando...",
       "errorLoading": "Error al cargar datos. Ver consola.",
       "noDoctors": "No se encontraron doctores.",
