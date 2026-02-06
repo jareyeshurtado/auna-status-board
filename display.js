@@ -17,6 +17,9 @@ const db = firebase.firestore();
 const boardContainer = document.getElementById('board-container');
 const mainTitleElement = document.getElementById('main-title-h1');
 
+const footerMessageElement = document.getElementById('footer-message');
+const clockElement = document.getElementById('clock-display');
+
 // --- Global variables ---
 let useCardView = true; // Default
 let i18n = {}; // Will hold the selected language texts
@@ -93,7 +96,32 @@ function applyStaticTexts() {
     if (mainTitleElement && i18n.global) {
         mainTitleElement.textContent = i18n.global.mainTitle || "Doctor Appointments";
     }
+	
+	if (footerMessageElement && i18n.global) {
+        footerMessageElement.textContent = i18n.global.footerMessage || "";
+    }
+	
     document.title = i18n.global?.mainTitle || "Doctor Status Board";
+}
+
+function startClock() {
+    function update() {
+        if (!clockElement) return;
+        
+        const now = new Date();
+        const timeString = now.toLocaleTimeString("en-US", {
+            timeZone: "America/Mexico_City",
+            hour: "2-digit", 
+            minute: "2-digit",
+            hour12: true
+        });
+        
+        // Remove spaces from AM/PM if desired, or keep standard format
+        clockElement.textContent = timeString; 
+    }
+    
+    update(); // Run immediately
+    setInterval(update, 1000); // Update every second
 }
 
 /**

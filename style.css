@@ -20,7 +20,7 @@ header h1 {
     color: #5b4a2c; 
     letter-spacing: 1px;
 	font-family: 'Open Sans', 'Segoe UI', Tahoma, sans-serif;
-	font-weight: 400;
+	font-weight: bold;
 }
 
 .loading-message {
@@ -246,6 +246,34 @@ header h1 {
     color: #888;
 }
 
+/* =============================== */
+/* === FOOTER STYLES (NEW) ======= */
+/* =============================== */
+footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    padding-top: 10px;
+    border-top: 2px solid #d1c7b7; /* Subtle divider line */
+    color: #5b4a2c;
+}
+
+#clock-display {
+    font-family: 'Open Sans', sans-serif;
+    font-size: 3rem; /* Large time font like screenshot */
+    font-weight: 600;
+    color: #3b2f1c; /* Darker brown */
+    line-height: 1;
+}
+
+#footer-message {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 1.3rem;
+    color: #5b4a2c;
+    text-align: right;
+}
+
 /* ================================================= */
 /* === SAFE KIOSK OVERRIDES (Targeted Only) ======== */
 /* ================================================= */
@@ -262,6 +290,15 @@ body.tv-kiosk {
     
     padding: 15px;
     box-sizing: border-box;
+}
+
+/* NEW: Ensure Main fills the space between Header and Footer */
+body.tv-kiosk main {
+    flex: 1; /* Grows to fill available space */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    margin-bottom: 10px;
 }
 
 /* 2. Target the header ONLY inside the TV page */

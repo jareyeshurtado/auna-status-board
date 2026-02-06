@@ -16,7 +16,8 @@
 	  "statusInConsultation": "In Consultation",
 	  "statusDelayed": "Consultation Delayed",
 	  "statusAvailable": "Available",
-	  "statusNotAvailable": "Not Available"
+	  "statusNotAvailable": "Not Available",
+	  "footerMessage": "Please maintain silence in the waiting room."
     },
     "admin": {
 	  "nextAppointmentTitle": "Next Appointment",
@@ -91,7 +92,7 @@
   },
   "ES": {
     "global": {
-      "mainTitle": "Bienvenido a AUNA. Espere a que su turno sea llamado en pantalla con las iniciales de su nombre",
+      "mainTitle": "Bienvenido a AÚNA. Espere a que su turno sea llamado en pantalla con las iniciales de su nombre",
       "loading": "Cargando...",
       "errorLoading": "Error al cargar datos. Ver consola.",
       "noDoctors": "No se encontraron doctores.",
@@ -106,7 +107,8 @@
 	  "statusInConsultation": "En Consulta",
 	  "statusDelayed": "Consulta Retrasada",
 	  "statusAvailable": "Disponible",
-	  "statusNotAvailable": "No Disponible"
+	  "statusNotAvailable": "No Disponible",
+	  "footerMessage": "Mantenga el silencio en la sala de espera."
     },
     "admin": {
 	  "nextAppointmentTitle": "Próxima Cita",
