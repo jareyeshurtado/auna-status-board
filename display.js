@@ -38,12 +38,12 @@ async function fetchTexts() {
         // Set fallback texts
         allTexts = {
             EN: {
-                global: { mainTitle: "Doctor Appointments", loading: "Loading...", errorLoading: "Error.", noDoctors: "No doctors.", currentLabel: "Current:", nextLabel: "Next:", officeLabel: "Office:", noStatus: "N/A", unnamedDoctor: "Doctor", noSpecialty: "N/A" },
-                display: { headerDoctor: "Doctor", headerSpecialty: "Specialty", headerCurrent: "Current", headerStatus: "Status", headerOffice: "Office", headerNext: "Next" }
+                global: { mainTitle: "Doctor Appointments", loading: "Loading...", errorLoading: "Error.", noDoctors: "No doctors.", currentLabel: "Current:", officeLabel: "Office:", noStatus: "N/A", unnamedDoctor: "Doctor", noSpecialty: "N/A" },
+                display: { headerDoctor: "Doctor", headerSpecialty: "Specialty", headerCurrent: "Current", headerStatus: "Status", headerOffice: "Office" }
             },
             ES: {
-                global: { mainTitle: "Citas Médicas", loading: "Cargando...", errorLoading: "Error.", noDoctors: "No doctores.", currentLabel: "Actual:", nextLabel: "Siguiente:", officeLabel: "Consultorio:", noStatus: "N/A", unnamedDoctor: "Doctor", noSpecialty: "N/A" },
-                display: { headerDoctor: "Doctor", headerSpecialty: "Especialidad", headerCurrent: "Actual", headerStatus: "Estatus", headerOffice: "Consultorio", headerNext: "Siguiente" }
+                global: { mainTitle: "Citas Médicas", loading: "Cargando...", errorLoading: "Error.", noDoctors: "No doctores.", currentLabel: "Actual:", officeLabel: "Consultorio:", noStatus: "N/A", unnamedDoctor: "Doctor", noSpecialty: "N/A" },
+                display: { headerDoctor: "Doctor", headerSpecialty: "Especialidad", headerCurrent: "Actual", headerStatus: "Estatus", headerOffice: "Consultorio" }
             }
         };
          if (mainTitleElement) mainTitleElement.textContent = "Doctor Appointments";
@@ -131,7 +131,6 @@ function listenForDoctorUpdates() {
                      <div class="doctor-cell cell-current">${i18n.display?.headerCurrent || 'Current'}</div>
                      <div class="doctor-cell cell-status">${i18n.display?.headerStatus || 'Status'}</div>
                      <div class="doctor-cell cell-office">${i18n.display?.headerOffice || 'Office'}</div>
-                     <div class="doctor-cell cell-next">${i18n.display?.headerNext || 'Next'}</div>
                  </div>
              `;
             boardContainer.innerHTML = headerHtml;
@@ -187,9 +186,6 @@ function listenForDoctorUpdates() {
                         </div>
                         <div class="appointment-info">
                             <strong>${i18n.global?.currentLabel}</strong> ${displayCurrent}
-                        </div>
-                        <div class="appointment-info">
-                            <strong>${i18n.global?.nextLabel}</strong> ${displayNext}
                         </div>
                     </div>
                 `;

@@ -34,7 +34,7 @@ function formatApptText(appointment) {
 }
 
 /**
- * Calculates and updates the current/next appointment status for a specific doctor.
+ * Calculates and updates the current appointment status for a specific doctor.
  * (This function is no longer called by Cloud Functions,
  * but we'll leave it here in case you ever need it again.)
  * @param {string} doctorAuthUid The authUID of the doctor to update.
@@ -88,7 +88,6 @@ async function calculateAndUpdateDoctorStatus(doctorAuthUid) {
       .get();
 
   let currentText = "---";
-  let nextText = "---";
   const nowTimestamp = Date.now(); 
 
   if (!apptSnapshot.empty) {
@@ -107,29 +106,19 @@ async function calculateAndUpdateDoctorStatus(doctorAuthUid) {
       nowTimestamp >= appt.startTimeMs && nowTimestamp < appt.endTimeMs
     );
 
-    // Find next appointment
-    const nextAppt = appointments.find(appt =>
-      appt.startTimeMs > nowTimestamp
-    );
+    
 
 
     // Determine text based on findings
      if (currentAppt) {
         currentText = formatApptText(currentAppt);
-        const nextAfterCurrent = appointments.find(appt => appt.startTimeMs >= currentAppt.endTimeMs);
-        if (nextAfterCurrent) {
-            nextText = formatApptText(nextAfterCurrent);
-        }
-    } else if (nextAppt) {
-        nextText = formatApptText(nextAppt);
-    }
+    } 
   }
 
   // 4. Update the doctor's document
-  console.log(`Updating doctor ${doctorAuthUid}: Current: ${currentText}, Next: ${nextText}`);
+  console.log(`Updating doctor ${doctorAuthUid}: Current: ${currentText}`);
   return doctorRef.update({
     autoCurrentAppointment: currentText,
-    autoNextAppointment: nextText,
   });
 }
 

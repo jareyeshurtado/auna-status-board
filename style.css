@@ -4,8 +4,8 @@
 
 body {
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    background-color: #F7F4EF; /* Beige background from image */
-    color: #4A4A4A; /* Softer dark text */
+    background-color: #dfcda7; /* Beige background from image */
+    color: #5b4a2c; /* Softer dark text */
     margin: 0;
     padding: 20px;
 }
@@ -17,7 +17,7 @@ header {
 
 header h1 {
     font-size: 2.5rem;
-    color: #A3844D; /* Gold/Brown color from logo */
+    color: #5b4a2c; /* Gold/Brown color from logo */
     text-transform: uppercase;
     letter-spacing: 1px;
 }
@@ -81,7 +81,7 @@ header h1 {
 
 /* Card Styling */
 .card-layout .doctor-card {
-    background-color: #ffffff;
+    background-color: #f7ecd8;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); /* Softer shadow */
     padding: 20px 25px;
@@ -96,13 +96,13 @@ header h1 {
 .card-layout .doctor-card h2 {
     margin: 0 0 5px 0;
     font-size: 1.6rem;
-    color: #333;
+    color: #5b4a2c;
 }
 
 .card-layout .doctor-card .specialty {
     margin: 0 0 15px 0;
     font-size: 1.1rem;
-    color: #777;
+    color: #5b4a2c;
     font-weight: 500;
 }
 
@@ -122,7 +122,7 @@ header h1 {
 .card-layout .doctor-card.status-available,
 .card-layout .doctor-card.status-in-consultation,
 .card-layout .doctor-card.status-on-time {
-    border-left-color: #5C9458;
+    border-left-color: #C09853;
 }
 .card-layout .doctor-card.status-consultation-delayed,
 .card-layout .doctor-card.status-delayed {
@@ -130,18 +130,18 @@ header h1 {
 }
 .card-layout .doctor-card.status-not-available,
 .card-layout .doctor-card.status-away {
-    border-left-color: #D32F2F;
+    border-left-color: #C09853;
 }
 
 /* Card View Appointment Info */
 .card-layout .appointment-info {
     font-size: 1.1rem;
     line-height: 1.6;
-    color: #555;
+    color: #5b4a2c;
 }
 
 .card-layout .appointment-info strong {
-    color: #A3844D; /* Gold labels */
+    color: #5b4a2c; /* Gold labels */
 }
 
 
