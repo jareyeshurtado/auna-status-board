@@ -84,6 +84,7 @@ async function initializeDisplay() {
 
     // 4. Apply static texts
     applyStaticTexts();
+	startClock(); // NEW: Start the clock
 
     // 5. Start the real-time listener
     listenForDoctorUpdates();
@@ -105,8 +106,15 @@ function applyStaticTexts() {
 }
 
 function startClock() {
+    // FIX 2: Move the element selection INSIDE the function.
+    // This prevents errors if the script runs before the HTML footer is ready.
+    const clockElement = document.getElementById('clock-display');
+
     function update() {
-        if (!clockElement) return;
+        if (!clockElement) {
+            console.warn("Clock element not found!");
+            return;
+        }
         
         const now = new Date();
         const timeString = now.toLocaleTimeString("en-US", {
@@ -116,7 +124,6 @@ function startClock() {
             hour12: true
         });
         
-        // Remove spaces from AM/PM if desired, or keep standard format
         clockElement.textContent = timeString; 
     }
     
