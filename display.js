@@ -151,53 +151,20 @@ function listenForDoctorUpdates() {
             }
             // --- END NEW CHECK ---
 
-            // --- START: Corrected Dynamic Logic Block ---
-            let statusClass = 'available'; // Default to 'available' (green)
-            let displayStatus = doctor.status; // Get the raw, translated status (e.g., "En Consulta")
-            
-            // This console.log is for debugging
-            console.log(`DOCTOR: ${doctor.displayName || 'Unnamed'}. DB Status: "${doctor.status}"`);
+            let statusClass = 'status-available'; // Default
+            let displayStatus = doctor.status || i18n.global?.noStatus;
 
             if (doctor.status) {
-                // Status exists in the database
-                
-                // 1. We check the status against ALL known translations from allTexts
-                // (This will work after you apply Fix 2)
-                if (doctor.status === allTexts.EN.global?.statusInConsultation || 
-                    doctor.status === allTexts.ES.global?.statusInConsultation) {
-                    statusClass = 'consultation'; // Blue
-                } 
-                else if (doctor.status === allTexts.EN.global?.statusDelayed || 
-                         doctor.status === allTexts.ES.global?.statusDelayed) {
-                    statusClass = 'delayed'; // Yellow
-                } 
-                else if (doctor.status === allTexts.EN.global?.statusNotAvailable || 
-                         doctor.status === allTexts.ES.global?.statusNotAvailable) {
-                    statusClass = 'unavailable'; // Red
-                } 
-                else if (doctor.status === allTexts.EN.global?.statusAvailable || 
-                         doctor.status === allTexts.ES.global?.statusAvailable) {
-                    statusClass = 'available'; // Green
-                }
-                
-                // 2. Fallback logic for OLD statuses (if they still exist in your DB)
-                else {
-                    console.log(`  WARN: Status "${doctor.status}" did not match new translations. Trying old fallback.`);
-                    const lowerCaseStatus = doctor.status.toLowerCase();
-                    if (lowerCaseStatus.includes('on time') || lowerCaseStatus.includes('go ahead')) {
-                        statusClass = 'available';
-                    } else if (lowerCaseStatus.includes('away') || lowerCaseStatus.includes('finished') || lowerCaseStatus.includes('not available')) {
-                        statusClass = 'unavailable';
-                    } else if (lowerCaseStatus.includes('delay')) { // Catches "15m Delay"
-                        statusClass = 'delayed';
-                    }
-                }
-
-            } else {
-                 // If no status is set at all (doctor.status is null or empty)
-                 displayStatus = i18n.global?.noStatus || 'No Status';
-                 statusClass = 'available'; // Default to green
-                 console.log(`  WARN: No status found in DB.`);
+                 const lowerCaseStatus = doctor.status.toLowerCase();
+                 if (lowerCaseStatus === 'available') {
+                     statusClass = 'status-available';
+                 } else if (lowerCaseStatus === 'in consultation') {
+                     statusClass = 'status-in-consultation';
+                 } else if (lowerCaseStatus === 'consultation delayed') {
+                     statusClass = 'status-consultation-delayed';
+                 } else if (lowerCaseStatus === 'not available') {
+                    statusClass = 'status-not-available';
+                 }
             }
             // --- END: Corrected Dynamic Logic Block ---
 

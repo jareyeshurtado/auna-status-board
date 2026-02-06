@@ -271,11 +271,11 @@ function updateMainActionButtonState() {
 
     if (currentDoctorStatus === 'In Consultation') {
         mainActionButton.textContent = "Finish Consultation"; // Add to i18n if desired
-        mainActionButton.style.backgroundColor = "#dc3545"; // Red
+        mainActionButton.style.backgroundColor = "#D32F2F"; // Red
         mainActionButton.disabled = false;
     } else {
         mainActionButton.textContent = i18n.admin?.startButton || "Start Consultation";
-        mainActionButton.style.backgroundColor = "#28a745"; // Green
+        mainActionButton.style.backgroundColor = "#5C9458"; // Green
         
         if (selectedAppointment) {
             mainActionButton.disabled = false;
