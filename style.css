@@ -3,9 +3,9 @@
 /* =============================== */
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: #f0f2f5;
-    color: #333;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    background-color: #F7F4EF; /* Beige background from image */
+    color: #4A4A4A; /* Softer dark text */
     margin: 0;
     padding: 20px;
 }
@@ -17,43 +17,41 @@ header {
 
 header h1 {
     font-size: 2.5rem;
-    color: #1c3d5a;
+    color: #A3844D; /* Gold/Brown color from logo */
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .loading-message {
     font-size: 1.5rem;
-    color: #777;
+    color: #888;
     text-align: center;
     padding: 30px;
 }
 
-/* Shared Status Colors (Backgrounds/Text) */
-
-/* NEW 'In Consultation' (Blue) */
-.status.consultation {
-    background-color: #e0f0ff; /* Light blue */
-    color: #0056b3; /* Dark blue */
+/* === NEW: Status Colors based on Image === */
+/* Green for "Available", "In Consultation", "Go Ahead" */
+.status.on-time,
+.status.go-ahead,
+.status.status-available,
+.status.status-in-consultation {
+    background-color: #5C9458; /* Muted Green */
+    color: #ffffff; /* White text */
 }
 
-/* RENAMED 'Available' (Green) - was .on-time */
-.status.available,
-.status.on-time{
-    background-color: #e0f8e9;
-    color: #006421;
+/* Gold for "Delayed" */
+.status.delayed,
+.status.status-consultation-delayed {
+    background-color: #C09853; /* Gold/Brown */
+    color: #ffffff;
 }
 
-/* 'Delayed' (Yellow) - No change */
-.status.delayed {
-    background-color: #fff8e0;
-    color: #a06c00;
-}
-
-/* RENAMED 'Not Available' (Red) - was .away */
-.status.unavailable,
+/* Red for "Not Available", "Finished" */
 .status.away,
-.status.finished {
-    background-color: #fdebee;
-    color: #c91c1c;
+.status.finished,
+.status.status-not-available {
+    background-color: #D32F2F; /* Standard Red */
+    color: #ffffff;
 }
 
 /* =============================== */
@@ -74,71 +72,76 @@ header h1 {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
     gap: 25px;
-    max-width: 1920px; /* Max width for cards */
-    /* Reset styles that might conflict from row view */
+    max-width: 1920px;
     border: none;
     border-radius: 0;
     box-shadow: none;
-    font-size: inherit; /* Use body font size */
+    font-size: inherit;
 }
 
 /* Card Styling */
 .card-layout .doctor-card {
     background-color: #ffffff;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); /* Softer shadow */
     padding: 20px 25px;
     transition: transform 0.2s ease;
-    border-left: 5px solid #007bff; /* Default accent color */
+    border-left: 5px solid #A3844D; /* Default Gold accent */
 }
 
 .card-layout .doctor-card:hover {
-    transform: translateY(-5px);
+    transform: translateY(-3px);
 }
 
 .card-layout .doctor-card h2 {
     margin: 0 0 5px 0;
-    font-size: 1.8rem;
-    color: #1c3d5a;
+    font-size: 1.6rem;
+    color: #333;
 }
 
 .card-layout .doctor-card .specialty {
     margin: 0 0 15px 0;
     font-size: 1.1rem;
-    color: #555;
+    color: #777;
     font-weight: 500;
 }
 
 /* Card View Status Pill Specifics */
 .card-layout .doctor-card .status {
-    font-size: 1.4rem;
-    font-weight: bold;
-    padding: 10px;
-    border-radius: 5px;
+    font-size: 1.3rem;
+    font-weight: normal; /* Image uses normal weight for status text */
+    padding: 8px 10px;
+    border-radius: 4px;
     text-align: center;
     margin-bottom: 20px;
     display: block;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2); /* Slight depth like buttons */
 }
 
-/* Card View Border Colors */
+/* Card Borders matching status */
+.card-layout .doctor-card.status-available,
+.card-layout .doctor-card.status-in-consultation,
 .card-layout .doctor-card.status-on-time {
-    border-left-color: #00b03b;
+    border-left-color: #5C9458;
 }
+.card-layout .doctor-card.status-consultation-delayed,
 .card-layout .doctor-card.status-delayed {
-    border-left-color: #ffc107;
+    border-left-color: #C09853;
 }
+.card-layout .doctor-card.status-not-available,
 .card-layout .doctor-card.status-away {
-    border-left-color: #e53935;
+    border-left-color: #D32F2F;
 }
 
 /* Card View Appointment Info */
 .card-layout .appointment-info {
     font-size: 1.1rem;
     line-height: 1.6;
+    color: #555;
 }
 
 .card-layout .appointment-info strong {
-    color: #444;
+    color: #A3844D; /* Gold labels */
 }
 
 
@@ -151,42 +154,42 @@ header h1 {
     display: block; /* Ensure it's not grid */
     max-width: 1800px;
     margin: 0 auto;
-    font-size: 1.4rem; /* Specific font size for rows */
-    border: 1px solid #ccc;
+    font-size: 1.4rem;
+    border: none; /* Removed border to look cleaner */
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     gap: 0;
+    background-color: transparent; 
 }
 
 /* Row View Header */
 .row-layout .board-header {
     display: flex;
     font-weight: bold;
-    background-color: #e9ecef;
-    color: #343a40;
+    background-color: #E8E3D9; /* Darker beige for header */
+    color: #5b4a42;
     padding: 15px 10px;
-    border-bottom: 2px solid #ccc;
-    font-size: 1.1rem;
-    border-top-left-radius: 7px;
-    border-top-right-radius: 7px;
+    border-bottom: 1px solid #d1c7b7;
+    font-size: 1.2rem;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
 }
 
 /* Row View Doctor Row */
 .row-layout .doctor-row {
     display: flex;
     align-items: center;
-    border-bottom: 1px solid #eee;
-    background-color: #ffffff;
     padding: 15px 10px;
 }
-
-.row-layout .doctor-row:nth-child(even) { /* Exclude header */
-    background-color: #f9f9f9;
+.row-layout #board-container > .doctor-row:not(.board-header) {
+     border-bottom: 1px solid #f0ebe0;
+     background-color: #ffffff; /* Rows remain white for contrast */
 }
 
-.row-layout #board-container > .doctor-row:last-child {
-    border-bottom: none;
+/* Gradient effect for rows from image? Let's keep it clean white/off-white */
+.row-layout #board-container > .doctor-row:not(.board-header):nth-child(even) {
+    background-color: #FCFAF7; /* Very subtle alternating beige */
 }
 
 /* Row View Cells (Applies to header and data rows) */
@@ -200,42 +203,46 @@ header h1 {
 
 /* Row View Cell Widths */
 .row-layout .cell-name {
-    flex: 0 0 20%;
+    flex: 0 0 25%;
     font-weight: bold;
+    color: #333;
 }
 .row-layout .cell-specialty {
-    flex: 0 0 15%;
-    color: #555;
+    flex: 0 0 20%;
+    color: #666;
 }
 .row-layout .cell-current {
-    flex: 1 1 18%;
+    flex: 1 1 15%;
     min-width: 100px;
 }
 .row-layout .cell-status {
-    flex: 0 0 15%;
+    flex: 0 0 20%;
     text-align: center;
 }
 
 /* Row View Status Pill Specifics */
 .row-layout .cell-status .status {
-    padding: 8px 10px;
+    padding: 6px 15px;
     font-size: 1.1rem;
     margin: 0;
     display: inline-block;
-    min-width: 100px;
-    border-radius: 5px;
-    font-weight: bold;
+    min-width: 140px;
+    border-radius: 4px;
+    font-weight: normal;
     text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
 }
 
 .row-layout .cell-office {
     flex: 0 0 10%;
     text-align: center;
     color: #444;
+    font-weight: bold;
 }
 .row-layout .cell-next {
-    flex: 1 1 22%;
-    min-width: 100px;
+    flex: 1 1 10%;
+    min-width: 80px;
+    color: #888;
 }
 
 /* ================================================= */
