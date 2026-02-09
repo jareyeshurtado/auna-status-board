@@ -185,22 +185,41 @@ function listenForDoctorUpdates() {
             }
             // --- END NEW CHECK ---
 
-            let statusClass = 'status-available'; // Default
-            let displayStatus = doctor.status || i18n.global?.noStatus;
+            // ... inside snapshot.forEach(doc => { ...
 
-            if (doctor.status) {
-                 const lowerCaseStatus = doctor.status.toLowerCase();
-                 if (lowerCaseStatus === 'available') {
-                     statusClass = 'status-available';
-                 } else if (lowerCaseStatus === 'in consultation') {
-                     statusClass = 'status-in-consultation';
-                 } else if (lowerCaseStatus === 'consultation delayed') {
-                     statusClass = 'status-consultation-delayed';
-                 } else if (lowerCaseStatus === 'not available') {
-                    statusClass = 'status-not-available';
-                 }
+            // 1. Get the raw status from DB (e.g., "In Consultation")
+            const rawStatus = doctor.status || '';
+            const lowerCaseStatus = rawStatus.toLowerCase();
+
+            // 2. Determine CSS Class (Keep relying on English keys for styles)
+            let statusClass = 'status-available'; // Default fallback
+
+            if (lowerCaseStatus === 'available') {
+                 statusClass = 'status-available';
+            } else if (lowerCaseStatus === 'in consultation') {
+                 statusClass = 'status-in-consultation';
+            } else if (lowerCaseStatus === 'consultation delayed') {
+                 statusClass = 'status-consultation-delayed';
+            } else if (lowerCaseStatus === 'not available') {
+                statusClass = 'status-not-available';
             }
-            // --- END: Corrected Dynamic Logic Block ---
+
+            // 3. Determine Display Text (Translate English Key -> Spanish/English Text)
+            // Start with the raw text, or the default "No Status" text
+            let displayStatus = rawStatus || i18n.global?.noStatus;
+
+            // If the DB value matches a known key, use the translation from texts.json
+            if (lowerCaseStatus === 'available') {
+                displayStatus = i18n.global?.statusAvailable || "Available";
+            } else if (lowerCaseStatus === 'in consultation') {
+                displayStatus = i18n.global?.statusInConsultation || "In Consultation";
+            } else if (lowerCaseStatus === 'consultation delayed') {
+                displayStatus = i18n.global?.statusDelayed || "Delayed";
+            } else if (lowerCaseStatus === 'not available') {
+                displayStatus = i18n.global?.statusNotAvailable || "Not Available";
+            }
+            
+            // ... continue to displayCurrent / displayNext ...
 
             // This console.log is for debugging
             console.log(`  FINAL CLASS: "${statusClass}"`);
