@@ -150,18 +150,39 @@ function listenForDoctorUpdates() {
         applyLayoutClass();
         boardContainer.innerHTML = ''; // Clear container
 
-        // [Header Row Logic for Row Layout - Omitted for brevity, keep existing if needed]
+        // [Header Row Logic for Row Layout - Keep existing if needed]
 
-        const itemsHtmlArray = [];
-        let shouldPlaySound = false; // Flag to check if we need to beep
-
+        // --- STEP 1: COLLECT DATA ---
+        let doctorsList = [];
         snapshot.forEach(doc => {
-            const doctor = doc.data();
-            const doctorId = doc.id;
+            const data = doc.data();
+            // Only add if not hidden
+            if (data.hide !== true) {
+                doctorsList.push({
+                    id: doc.id,
+                    ...data
+                });
+            }
+        });
 
-            if (doctor.hide === true) return;
+        // --- STEP 2: SORT BY OFFICE NUMBER (Ascending) ---
+        doctorsList.sort((a, b) => {
+            // Convert "101" (string) to 101 (number) for correct math
+            // If officeNumber is missing, treat it as 9999 (put it at the end)
+            const numA = parseInt(a.officeNumber) || 9999;
+            const numB = parseInt(b.officeNumber) || 9999;
+            
+            return numA - numB; // Lowest numbers first
+        });
 
-            // --- 1. DETERMINE STATUS & TRANSLATION (Your existing logic) ---
+        // --- STEP 3: RENDER (Iterate over the SORTED list) ---
+        const itemsHtmlArray = [];
+        let shouldPlaySound = false;
+
+        doctorsList.forEach(doctor => {
+            const doctorId = doctor.id; // ID is now inside the object
+
+            // --- 1. DETERMINE STATUS & TRANSLATION ---
             const rawStatus = doctor.status || '';
             const lowerCaseStatus = rawStatus.toLowerCase();
             let statusClass = 'status-available';
@@ -181,21 +202,15 @@ function listenForDoctorUpdates() {
 
             // --- 2. DETECT CHANGE & TRIGGER FLASH ---
             let flashClass = '';
-			
-			// Get the trigger value (or 0 if it doesn't exist yet)
             const currentCallTrigger = doctor.callAgainTrigger || 0;
-            
-            // Check if we have history for this doctor
+
             if (previousDoctorStates[doctorId]) {
                 const prev = previousDoctorStates[doctorId];
                 
-                // TRIGGER IF:
-                // 1. Status is 'In Consultation' AND
-                // 2. (Status changed OR Text changed OR 'Call Again' button was clicked)
                 if (lowerCaseStatus === 'in consultation') {
                     if (prev.status !== 'in consultation' || 
                         prev.current !== displayCurrent || 
-                        prev.lastTrigger !== currentCallTrigger) { // <--- NEW CHECK
+                        prev.lastTrigger !== currentCallTrigger) { 
                         
                         flashClass = 'card-flash';
                         shouldPlaySound = true;
@@ -203,17 +218,15 @@ function listenForDoctorUpdates() {
                 }
             }
 
-            // Update history for next time
             previousDoctorStates[doctorId] = {
                 status: lowerCaseStatus,
                 current: displayCurrent,
-				lastTrigger: currentCallTrigger
+                lastTrigger: currentCallTrigger 
             };
 
-            // --- 3. RENDER CARD (Updated to include flashClass) ---
+            // --- 3. RENDER CARD ---
             let itemHtml = '';
             if (useCardView) {
-                // Notice the ${flashClass} added to the div class list
                 itemHtml = `
                     <div class="doctor-card ${statusClass} ${flashClass}" data-id="${doctorId}">
                         <h2>${doctor.displayName || i18n.global?.unnamedDoctor}</h2>
@@ -235,11 +248,9 @@ function listenForDoctorUpdates() {
 
         boardContainer.innerHTML = itemsHtmlArray.join('');
 
-        // --- 4. PLAY SOUND (If needed) ---
+        // --- 4. PLAY SOUND ---
         if (shouldPlaySound) {
-            // Browsers often block auto-playing audio without user interaction first.
-            // We wrap it in a try-catch to avoid errors in the console.
-            alertSound.play().catch(e => console.log("Audio play blocked by browser policy:", e));
+            alertSound.play().catch(e => console.log("Audio play blocked:", e));
         }
 
     }, error => {
