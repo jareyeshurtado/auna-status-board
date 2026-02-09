@@ -4,8 +4,8 @@
 
 body {
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    background-color: #dfcda7; /* Beige background from image */
-    color: #5b4a2c; /* Softer dark text */
+    background-color: #dfcda7; /* Page Background*/
+    color: #5b4a2c; 
     margin: 0;
     padding: 20px;
 }
@@ -17,7 +17,7 @@ header {
 
 header h1 {
     font-size: 1.5rem;
-    color: #5b4a2c; 
+    color: #5b4a2c; /* Top Text Color*/
     letter-spacing: 1px;
 	font-family: 'Open Sans', 'Segoe UI', Tahoma, sans-serif;
 	font-weight: bold;
@@ -352,24 +352,43 @@ body.tv-kiosk .card-layout .doctor-card {
 
 /* 5. Scale text ONLY on the TV page */
 body.tv-kiosk .card-layout .doctor-card h2 {
-    font-size: 1.2rem;    
+    font-size: 1.4rem;    
     margin-bottom: 2px;
+	font-weight: 700;
+}
+
+body.tv-kiosk .card-layout .doctor-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* This pushes elements apart to fill space */
+    
+    padding: 8px 12px; 
+    
+    transform: none !important; 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 body.tv-kiosk .card-layout .doctor-card .specialty {
-    font-size: 0.85rem;
+    font-size: 1.1rem;
     margin-bottom: 5px;
+	font-weight: 600;     /* Made it slightly bolder */
+    color: #5b4a2c;       /* Ensure contrast */
 }
 
+/* Cuadro de Estado Font and Size */
 body.tv-kiosk .card-layout .doctor-card .status {
-    font-size: 0.8rem;    
-    padding: 4px 0;
+    font-size: 1.5rem;    
+    padding: 12px 0;
     margin-bottom: 5px;
+	border-radius: 6px;   /* Slightly more rounded */
+    width: 100%;          /* Ensure it stretches full width */
 }
 
+/* Actual and Consultorio Font and Size*/
 body.tv-kiosk .card-layout .appointment-info {
-    font-size: 0.8rem;   
-    line-height: 1.2;
+    font-size: 1.5rem;   
+    line-height: 1.4;
+	font-weight: 500;
 }
 
 body.tv-kiosk footer {
