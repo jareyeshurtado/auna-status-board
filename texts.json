@@ -96,7 +96,7 @@
   },
   "ES": {
     "global": {
-      "mainTitle": "Bienvenido a AÚNA. Espere a que su turno sea llamado en pantalla con las iniciales de su nombre",
+      "mainTitle": "Bienvenido a AUNA. Espere a que su turno sea llamado en pantalla con las iniciales de su nombre",
       "loading": "Cargando...",
       "errorLoading": "Error al cargar datos. Ver consola.",
       "noDoctors": "No se encontraron doctores.",
