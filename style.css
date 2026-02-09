@@ -120,7 +120,7 @@ header h1 {
 }
 
 /* Card Borders matching status */
-.card-layout .doctor-card.status-available,
+.card-layout .doctor-card.	,
 .card-layout .doctor-card.status-in-consultation,
 .card-layout .doctor-card.status-on-time {
     border-left-color: #C09853;
@@ -284,6 +284,22 @@ footer {
     /* Center the text and force it into the middle column */
     text-align: center;
     grid-column: 2; 
+}
+
+/* UPDATED: Keyframes now control the Border Color too */
+@keyframes flash-highlight {
+    0%   { background-color: #f7ecd8; transform: scale(1);    border-left-color: #A3844D; } /* Start Brown */
+    25%  { background-color: #ffe082; transform: scale(1.02); border-left-color: #ffe082; box-shadow: 0 0 15px #ffe082; } /* Flash Yellow */
+    50%  { background-color: #f7ecd8; transform: scale(1);    border-left-color: #A3844D; } /* Back to Brown */
+    75%  { background-color: #ffe082; transform: scale(1.02); border-left-color: #ffe082; box-shadow: 0 0 15px #ffe082; } /* Flash Yellow */
+    100% { background-color: #f7ecd8; transform: scale(1);    border-left-color: #A3844D; } /* End Brown */
+}
+
+/* UPDATED: Removed the static border-color property */
+.card-flash {
+    animation: flash-highlight 2s ease-in-out;
+    z-index: 10;
+    /* We REMOVED 'border-color' from here so it doesn't get stuck! */
 }
 
 /* ================================================= */
