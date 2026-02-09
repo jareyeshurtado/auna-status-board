@@ -297,7 +297,7 @@ footer {
 
 /* UPDATED: Removed the static border-color property */
 .card-flash {
-    animation: flash-highlight 2s ease-in-out;
+    animation: flash-highlight 4s ease-in-out;
     z-index: 10;
     /* We REMOVED 'border-color' from here so it doesn't get stuck! */
 }
