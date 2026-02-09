@@ -181,25 +181,33 @@ function listenForDoctorUpdates() {
 
             // --- 2. DETECT CHANGE & TRIGGER FLASH ---
             let flashClass = '';
+			
+			// Get the trigger value (or 0 if it doesn't exist yet)
+            const currentCallTrigger = doctor.callAgainTrigger || 0;
             
             // Check if we have history for this doctor
             if (previousDoctorStates[doctorId]) {
                 const prev = previousDoctorStates[doctorId];
                 
-                // CRITERIA: Status changed TO "In Consultation" 
-                // AND the appointment text changed (to avoid flashing on minor edits)
-                if (lowerCaseStatus === 'in consultation' && 
-                    (prev.status !== 'in consultation' || prev.current !== displayCurrent)) {
-                    
-                    flashClass = 'card-flash'; // Add CSS animation class
-                    shouldPlaySound = true;    // Queue the sound
+                // TRIGGER IF:
+                // 1. Status is 'In Consultation' AND
+                // 2. (Status changed OR Text changed OR 'Call Again' button was clicked)
+                if (lowerCaseStatus === 'in consultation') {
+                    if (prev.status !== 'in consultation' || 
+                        prev.current !== displayCurrent || 
+                        prev.lastTrigger !== currentCallTrigger) { // <--- NEW CHECK
+                        
+                        flashClass = 'card-flash';
+                        shouldPlaySound = true;
+                    }
                 }
             }
 
             // Update history for next time
             previousDoctorStates[doctorId] = {
                 status: lowerCaseStatus,
-                current: displayCurrent
+                current: displayCurrent,
+				lastTrigger: currentCallTrigger
             };
 
             // --- 3. RENDER CARD (Updated to include flashClass) ---

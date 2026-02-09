@@ -39,6 +39,7 @@ const panelSettings = document.getElementById('panel-settings');
 // --- Status Panel Elements ---
 const upcomingList = document.getElementById('upcoming-appointments-list');
 const mainActionButton = document.getElementById('main-action-button');
+const callAgainButton = document.getElementById('call-again-button');
 const upcomingLabel = document.getElementById('upcoming-label'); 
 const manualStatusLabel = document.getElementById('manual-status-label'); 
 
@@ -129,6 +130,7 @@ function applyStaticTextsAdmin() {
     if (manualUpdateButton) {
         manualUpdateButton.textContent = i18n.admin?.updateStatusButton || "Set Manual Status";
     }
+	if (callAgainButton) callAgainButton.textContent = i18n.admin?.callAgainButton || "Call Again";
 }
 
 // =================================================================
@@ -270,18 +272,47 @@ function updateMainActionButtonState() {
     if (!mainActionButton) return;
 
     if (currentDoctorStatus === 'In Consultation') {
-        mainActionButton.textContent = "Finish Consultation"; // Add to i18n if desired
+        mainActionButton.textContent = i18n.admin?.finishButton || "Finish Consultation";
         mainActionButton.style.backgroundColor = "#D32F2F"; // Red
         mainActionButton.disabled = false;
+		
+		if (callAgainButton) callAgainButton.style.display = 'block';
     } else {
         mainActionButton.textContent = i18n.admin?.startButton || "Start Consultation";
         mainActionButton.style.backgroundColor = "#5C9458"; // Green
+		
+		if (callAgainButton) callAgainButton.style.display = 'none';
         
         if (selectedAppointment) {
             mainActionButton.disabled = false;
         } else {
             mainActionButton.disabled = true; 
         }
+    }
+}
+
+async function onCallAgainClick() {
+    if (!currentDoctorDocId) return;
+
+    // Disable briefly to prevent spam
+    callAgainButton.disabled = true;
+    
+    try {
+        // Update a specific field 'callAgainTrigger' with the current timestamp
+        // This change is what display.js will detect!
+        await db.collection('doctors').doc(currentDoctorDocId).update({
+            callAgainTrigger: Date.now() 
+        });
+        
+        // Optional: Small popup feedback
+        const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+        Toast.fire({ icon: 'success', title: i18n.admin?.callAgainSent || 'Signal Sent' });
+
+    } catch (e) {
+        console.error(e);
+        Swal.fire('Error', 'Could not send signal.', 'error');
+    } finally {
+        setTimeout(() => callAgainButton.disabled = false, 2000);
     }
 }
 
@@ -415,7 +446,7 @@ tabSettings.addEventListener('click', handleTabClick);
 if (mainActionButton) mainActionButton.addEventListener('click', onMainActionClick);
 if (manualStatusButtonsContainer) manualStatusButtonsContainer.addEventListener('click', onManualStatusClick);
 if (manualUpdateButton) manualUpdateButton.addEventListener('click', onManualUpdateClick);
-
+if (callAgainButton) callAgainButton.addEventListener('click', onCallAgainClick);
 
 // =================================================================
 // --- AUTH & HELPERS ---

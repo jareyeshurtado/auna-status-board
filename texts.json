@@ -79,7 +79,11 @@
       "deleteButton": "Yes, delete it!",
       "deleteSuccessTitle": "Deleted!",
       "deleteSuccessText": "Appointment has been deleted.",
-      "deleteErrorText": "Could not delete appointment."
+      "deleteErrorText": "Could not delete appointment.",
+	  "startButton": "Start Consultation",
+      "finishButton": "Finish Consultation", 
+      "callAgainButton": "Call Again",
+      "callAgainSent": "Signal sent!"
     },
     "display": {
       "headerDoctor": "Doctor",
@@ -170,7 +174,11 @@
       "deleteButton": "Sí, eliminar",
       "deleteSuccessTitle": "¡Eliminada!",
       "deleteSuccessText": "La cita ha sido eliminada.",
-      "deleteErrorText": "No se pudo eliminar la cita."
+      "deleteErrorText": "No se pudo eliminar la cita.",
+	  "startButton": "Iniciar Consulta",
+      "finishButton": "Terminar Consulta",
+      "callAgainButton": "Llamar Otra Vez",
+      "callAgainSent": "¡Señal enviada!"
     },
     "display": {
       "headerDoctor": "Doctor",
