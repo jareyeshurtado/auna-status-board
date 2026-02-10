@@ -1,5 +1,4 @@
 // STEP 1: Paste your Firebase config object here
-// (This is the object you saved from Step 1.5)
 const firebaseConfig = {
   apiKey: "AIzaSyCP2k-VJURlMV3-UNPVYMD4q9-wwNjiiQc",
   authDomain: "auna-board.firebaseapp.com",
@@ -16,22 +15,20 @@ const db = firebase.firestore();
 // STEP 3: Get references
 const boardContainer = document.getElementById('board-container');
 const mainTitleElement = document.getElementById('main-title-h1');
-
 const footerMessageElement = document.getElementById('footer-message');
 const clockElement = document.getElementById('clock-display');
-// --- AD SYSTEM VARIABLES ---
-let adTimer = null;
-let currentAdIndex = 0;
-let adPlaylist = []; 
-const AD_FOLDER_PATH = 'ads/'; // Path to your folder
+
+// --- PROMO SYSTEM VARIABLES (Renamed from Ads) ---
+let promoTimer = null;
+let currentPromoIndex = 0;
+let promoPlaylist = []; 
+const PROMO_FOLDER_PATH = 'promos/'; // UPDATED FOLDER NAME
 
 // --- Global variables ---
-let useCardView = true; // Default
-let i18n = {}; // Will hold the selected language texts
-let allTexts = {}; // Will hold the entire texts.json
-// Global variable to store the previous state of doctors
+let useCardView = true; 
+let i18n = {}; 
+let allTexts = {}; 
 let previousDoctorStates = {}; 
-// Audio object (Replace URL with your own file if desired)
 const alertSound = new Audio('beep.mp3'); 
 
 /**
@@ -40,137 +37,89 @@ const alertSound = new Audio('beep.mp3');
 async function fetchTexts() {
     try {
         const response = await fetch('texts.json');
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         allTexts = await response.json();
-        console.log("Texts loaded successfully.");
     } catch (error) {
         console.error("Error fetching texts.json:", error);
-        // Set fallback texts
         allTexts = {
-            EN: {
-                global: { mainTitle: "Doctor Appointments", loading: "Loading...", errorLoading: "Error.", noDoctors: "No doctors.", currentLabel: "Current:", officeLabel: "Office:", noStatus: "N/A", unnamedDoctor: "Doctor", noSpecialty: "N/A" },
-                display: { headerDoctor: "Doctor", headerSpecialty: "Specialty", headerCurrent: "Current", headerStatus: "Status", headerOffice: "Office" }
-            },
-            ES: {
-                global: { mainTitle: "Citas Médicas", loading: "Cargando...", errorLoading: "Error.", noDoctors: "No doctores.", currentLabel: "Actual:", officeLabel: "Consultorio:", noStatus: "N/A", unnamedDoctor: "Doctor", noSpecialty: "N/A" },
-                display: { headerDoctor: "Doctor", headerSpecialty: "Especialidad", headerCurrent: "Actual", headerStatus: "Estatus", headerOffice: "Consultorio" }
-            }
+            EN: { global: { mainTitle: "Doctor Appointments" } },
+            ES: { global: { mainTitle: "Citas Médicas" } }
         };
-         if (mainTitleElement) mainTitleElement.textContent = "Doctor Appointments";
     }
 }
 
 /**
- * Fetches settings, sets language, applies texts, and starts listeners.
+ * Initialize Display
  */
 async function initializeDisplay() {
-    // 1. Fetch all text strings
     await fetchTexts();
-	
-	// 1. Load Ads FIRST
-	await loadAdPlaylist();
+    
+    // 1. Load Promos FIRST
+    await loadPromoPlaylist();
 
-    let lang = "EN"; // Default language
+    let lang = "EN"; 
     try {
-        // 2. Fetch view and language settings
         const docRef = db.collection("settings").doc("displayConfig");
         const docSnap = await docRef.get();
-
         if (docSnap.exists) {
             const settings = docSnap.data();
             useCardView = settings.card_view === true;
             lang = settings.language || "EN";
-        } else {
-            console.warn("Display config document not found. Using defaults.");
         }
-    } catch (error) {
-        console.error("Error fetching settings:", error);
-    }
+    } catch (error) { console.error("Error fetching settings:", error); }
 
-    // 3. Set the active language object (i18n)
-    // Default to EN if the language code doesn't exist
     i18n = allTexts[lang.toUpperCase()] || allTexts.EN;
-    console.log(`View: ${useCardView ? 'Card' : 'Row'}, Language: ${lang}`);
-
-    // 4. Apply static texts
     applyStaticTexts();
-	startClock(); // NEW: Start the clock
-
-    // 5. Start the real-time listener
-	listenForDoctorUpdates();
+    startClock(); 
+    listenForDoctorUpdates();
 }
 
-/**
- * Applies all static text to the page.
- */
 function applyStaticTexts() {
-    if (mainTitleElement && i18n.global) {
-        mainTitleElement.textContent = i18n.global.mainTitle || "Doctor Appointments";
-    }
-	
-	if (footerMessageElement && i18n.global) {
-        footerMessageElement.textContent = i18n.global.footerMessage || "";
-    }
-	
+    if (mainTitleElement && i18n.global) mainTitleElement.textContent = i18n.global.mainTitle || "Doctor Appointments";
+    if (footerMessageElement && i18n.global) footerMessageElement.textContent = i18n.global.footerMessage || "";
     document.title = i18n.global?.mainTitle || "Doctor Status Board";
 }
 
 /**
- * Fetches the playlist.json file from your server
+ * Fetches the playlist.json file from the promos folder
  */
-async function loadAdPlaylist() {
+async function loadPromoPlaylist() {
     try {
-        const response = await fetch(`${AD_FOLDER_PATH}playlist.json`);
+        const response = await fetch(`${PROMO_FOLDER_PATH}playlist.json`);
         if (response.ok) {
             const files = await response.json();
-            // Convert filenames to full objects
-            adPlaylist = files.map(filename => ({
+            promoPlaylist = files.map(filename => ({
                 type: filename.endsWith('.mp4') ? 'video' : 'image',
-                url: `${AD_FOLDER_PATH}${filename}`
+                url: `${PROMO_FOLDER_PATH}${filename}`
             }));
-            console.log("Ads loaded:", adPlaylist);
+            console.log("Promos loaded:", promoPlaylist);
         } else {
             console.warn("Could not load playlist.json");
         }
     } catch (e) {
-        console.error("Error loading ads:", e);
+        console.error("Error loading promos:", e);
     }
 }
 
 function startClock() {
     const clockEl = document.getElementById('clock-display');
-
     function update() {
-        if (!clockEl) {
-            console.warn("Clock element not found!");
-            return;
-        }
-        
+        if (!clockEl) return;
         const now = new Date();
         const timeString = now.toLocaleTimeString("en-US", {
             timeZone: "America/Mexico_City",
-            hour: "2-digit", 
-            minute: "2-digit",
-            hour12: true
+            hour: "2-digit", minute: "2-digit", hour12: true
         });
-        
         clockEl.textContent = timeString; 
     }
-    
-    update(); // Run immediately
-    setInterval(update, 1000); // Update every second
+    update(); 
+    setInterval(update, 1000); 
 }
 
-/**
- * Applies the correct CSS class to the board container.
- */
 function applyLayoutClass() {
     boardContainer.classList.remove('card-layout', 'row-layout');
     boardContainer.classList.add(useCardView ? 'card-layout' : 'row-layout');
 }
-
 
 function listenForDoctorUpdates() {
     boardContainer.innerHTML = `<p class="loading-message">${i18n.global?.loading || 'Loading...'}</p>`;
@@ -179,30 +128,23 @@ function listenForDoctorUpdates() {
         applyLayoutClass();
         boardContainer.innerHTML = ''; 
 
-        // --- STEP 1: COLLECT DOCTORS ---
         let doctorsList = [];
         snapshot.forEach(doc => {
             const data = doc.data();
-            if (data.hide !== true) {
-                doctorsList.push({ id: doc.id, ...data });
-            }
+            if (data.hide !== true) doctorsList.push({ id: doc.id, ...data });
         });
 
-        // --- STEP 2: SORT DOCTORS ---
         doctorsList.sort((a, b) => {
             const numA = parseInt(a.officeNumber) || 9999;
             const numB = parseInt(b.officeNumber) || 9999;
             return numA - numB; 
         });
 
-        // --- STEP 3: RENDER DOCTORS ---
         const itemsHtmlArray = [];
         let shouldPlaySound = false;
 
         doctorsList.forEach(doctor => {
             const doctorId = doctor.id;
-            
-            // --- STATUS LOGIC (Same as before) ---
             const rawStatus = doctor.status || '';
             const lowerCaseStatus = rawStatus.toLowerCase();
             let statusClass = 'status-available';
@@ -219,29 +161,20 @@ function listenForDoctorUpdates() {
             else if (lowerCaseStatus === 'not available') displayStatus = i18n.global?.statusNotAvailable || "Not Available";
 
             let displayCurrent = doctor.displayCurrentAppointment || '---';
-
-            // --- FLASH LOGIC (Same as before) ---
             let flashClass = '';
             const currentCallTrigger = doctor.callAgainTrigger || 0;
 
             if (previousDoctorStates[doctorId]) {
                 const prev = previousDoctorStates[doctorId];
                 if (lowerCaseStatus === 'in consultation') {
-                    if (prev.status !== 'in consultation' || 
-                        prev.current !== displayCurrent || 
-                        prev.lastTrigger !== currentCallTrigger) { 
+                    if (prev.status !== 'in consultation' || prev.current !== displayCurrent || prev.lastTrigger !== currentCallTrigger) { 
                         flashClass = 'card-flash';
                         shouldPlaySound = true;
                     }
                 }
             }
-            previousDoctorStates[doctorId] = {
-                status: lowerCaseStatus,
-                current: displayCurrent,
-                lastTrigger: currentCallTrigger 
-            };
+            previousDoctorStates[doctorId] = { status: lowerCaseStatus, current: displayCurrent, lastTrigger: currentCallTrigger };
 
-            // --- RENDER HTML ---
             let itemHtml = '';
             if (useCardView) {
                 itemHtml = `
@@ -255,78 +188,57 @@ function listenForDoctorUpdates() {
                         <div class="appointment-info">
                             <strong>${i18n.global?.currentLabel}</strong> ${displayCurrent}
                         </div>
-                    </div>
-                `;
+                    </div>`;
             }
             itemsHtmlArray.push(itemHtml);
         });
 
-        // --- STEP 4: APPEND AD CARD (Always added at the end) ---
+        // --- RENDER PROMO CARD (Renamed to avoid blockers) ---
         if (useCardView) {
-            const adCardHtml = `
-                <div class="doctor-card ad-card">
-                    <img id="ad-img-element" class="ad-content" src="" alt="Ad">
-                    <video id="ad-video-element" class="ad-content" muted playsinline></video>
-                </div>
-            `;
-            itemsHtmlArray.push(adCardHtml);
+            const promoCardHtml = `
+                <div class="doctor-card promo-card">
+                    <img id="promo-img-element" class="promo-content" src="" alt="Info">
+                    <video id="promo-video-element" class="promo-content" muted playsinline></video>
+                </div>`;
+            itemsHtmlArray.push(promoCardHtml);
         }
 
         boardContainer.innerHTML = itemsHtmlArray.join('');
 
-        // --- PLAY SOUND ---
-        if (shouldPlaySound) {
-            alertSound.play().catch(e => console.log("Audio play blocked:", e));
-        }
+        if (shouldPlaySound) alertSound.play().catch(e => console.log("Audio blocked:", e));
+        if (promoPlaylist.length > 0) startPromoRotation();
 
-        // --- START AD ROTATION (If we have ads) ---
-        if (adPlaylist.length > 0) {
-            startAdRotation();
-        }
-
-    }, error => {
-        console.error("Error fetching doctor data:", error);
-    });
+    }, error => console.error("Error fetching data:", error));
 }
 
-/**
- * Handles the 30-second rotation of ads
- */
-function startAdRotation() {
-    if (adTimer) clearInterval(adTimer); // Clear existing timer
+function startPromoRotation() {
+    if (promoTimer) clearInterval(promoTimer);
 
-    const imgEl = document.getElementById('ad-img-element');
-    const vidEl = document.getElementById('ad-video-element');
+    const imgEl = document.getElementById('promo-img-element');
+    const vidEl = document.getElementById('promo-video-element');
     
-    if (!imgEl || !vidEl || adPlaylist.length === 0) return;
+    if (!imgEl || !vidEl || promoPlaylist.length === 0) return;
 
-    function showCurrentAd() {
-        const ad = adPlaylist[currentAdIndex];
+    function showCurrentPromo() {
+        const promo = promoPlaylist[currentPromoIndex];
         
-        // Hide both initially
         imgEl.classList.remove('active');
         vidEl.classList.remove('active');
         vidEl.pause();
 
-        if (ad.type === 'video') {
-            vidEl.src = ad.url;
+        if (promo.type === 'video') {
+            vidEl.src = promo.url;
             vidEl.classList.add('active');
             vidEl.play().catch(e => console.log("Video autoplay blocked:", e));
         } else {
-            imgEl.src = ad.url;
+            imgEl.src = promo.url;
             imgEl.classList.add('active');
         }
-
-        // Advance index
-        currentAdIndex = (currentAdIndex + 1) % adPlaylist.length;
+        currentPromoIndex = (currentPromoIndex + 1) % promoPlaylist.length;
     }
 
-    // Show first ad immediately
-    showCurrentAd();
-
-    // Rotate every 30 seconds
-    adTimer = setInterval(showCurrentAd, 30000); 
+    showCurrentPromo();
+    promoTimer = setInterval(showCurrentPromo, 30000); 
 }
 
-// --- Start the application ---
-initializeDisplay(); // Single entry point
+initializeDisplay();
