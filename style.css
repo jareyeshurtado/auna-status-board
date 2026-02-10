@@ -322,7 +322,7 @@ body.tv-kiosk {
 body.tv-kiosk header {
     flex: 0 0 auto;       
     margin-bottom: 1vh;
-    height: 15vh;          /* Increased from 6vh to fit Logo + Text */
+    height: 20vh;          /* Increased from 6vh to fit Logo + Text */
     
     display: flex;
     flex-direction: column; /* Stack Logo on top of Text */
@@ -332,7 +332,7 @@ body.tv-kiosk header {
 
 /* NEW: Logo Styling */
 body.tv-kiosk #header-logo {
-    height: 9vh;           /* Logo takes up about 9% of screen height */
+    height: 14vh;           /* Logo takes up about 9% of screen height */
     width: auto;           /* Maintain aspect ratio */
     margin-bottom: 1.5vh;  /* Space between logo and text */
 }
