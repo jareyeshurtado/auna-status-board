@@ -460,3 +460,18 @@ body.tv-kiosk .card-layout .promo-card {
     justify-content: center;
     align-items: center;
 }
+
+body.tv-kiosk .promo-content {
+    width: 100%;
+    height: 100%;
+    
+    /* 'cover' fills the box (no black bars, but might crop edges) */
+    /* 'contain' shows the whole image (no cropping, but might have black bars) */
+    object-fit: cover; 
+    
+    display: none; /* Hidden by default */
+}
+
+body.tv-kiosk .promo-content.active {
+    display: block; /* Shown when active */
+}
