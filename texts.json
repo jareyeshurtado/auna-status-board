@@ -96,7 +96,7 @@
   },
   "ES": {
     "global": {
-      "mainTitle": "Bienvenido, Espere a que su turno sea llamado en pantalla con las iniciales de su nombre",
+      "mainTitle": "Bienvenido, Su turno sera llamado en pantalla con las iniciales de su nombre",
       "loading": "Cargando...",
       "errorLoading": "Error al cargar datos. Ver consola.",
       "noDoctors": "No se encontraron doctores.",

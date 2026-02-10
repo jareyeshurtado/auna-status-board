@@ -383,7 +383,7 @@ body.tv-kiosk .card-layout .doctor-card {
 
 /* Doctor Name */
 body.tv-kiosk .card-layout .doctor-card h2 {
-    font-size: 6vh;     /* Increased from 2.4vh */
+    font-size: 5.5vh;     /* Increased from 2.4vh */
     line-height: 1.1;
     font-weight: 800;
     margin: 0;
@@ -395,7 +395,7 @@ body.tv-kiosk .card-layout .doctor-card h2 {
 
 /* Specialty */
 body.tv-kiosk .card-layout .doctor-card .specialty {
-    font-size: 5.5vh;     
+    font-size: 4vh;     
     color: #5b4a2c;
     margin: 0;
 	font-weight: 600;     /* Semi-bold for better readability */
@@ -440,12 +440,12 @@ body.tv-kiosk footer {
 }
 
 body.tv-kiosk #clock-display {
-    font-size: 14vh;       
+    font-size: 12vh;       
     justify-self: start;
 }
 
 body.tv-kiosk #footer-message {
-    font-size: 10vh;       
+    font-size: 9vh;       
     grid-column: 2;
     text-align: center;
 }
