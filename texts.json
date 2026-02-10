@@ -96,7 +96,7 @@
   },
   "ES": {
     "global": {
-      "mainTitle": "Bienvenido a AUNA. Espere a que su turno sea llamado en pantalla con las iniciales de su nombre",
+      "mainTitle": "Bienvenido, Espere a que su turno sea llamado en pantalla con las iniciales de su nombre",
       "loading": "Cargando...",
       "errorLoading": "Error al cargar datos. Ver consola.",
       "noDoctors": "No se encontraron doctores.",
@@ -112,7 +112,7 @@
 	  "statusDelayed": "Consulta Retrasada",
 	  "statusAvailable": "Disponible",
 	  "statusNotAvailable": "No Disponible",
-	  "footerMessage": "Mantenga el silencio en la sala de espera."
+	  "footerMessage": "Por favor, Mantenga el silencio en la sala de espera."
     },
     "admin": {
 	  "nextAppointmentTitle": "Próxima Cita",

@@ -339,7 +339,7 @@ body.tv-kiosk #header-logo {
 
 /* Adjusted Title Styling */
 body.tv-kiosk header h1 {
-    font-size: 12vh;        /* Slightly smaller to fit under logo */
+    font-size: 8vh;        /* Slightly smaller to fit under logo */
     line-height: 1;
     margin: 0;
     text-align: center;
@@ -383,7 +383,7 @@ body.tv-kiosk .card-layout .doctor-card {
 
 /* Doctor Name */
 body.tv-kiosk .card-layout .doctor-card h2 {
-    font-size: 8.5vh;     /* Increased from 2.4vh */
+    font-size: 6vh;     /* Increased from 2.4vh */
     line-height: 1.1;
     font-weight: 800;
     margin: 0;
@@ -395,7 +395,7 @@ body.tv-kiosk .card-layout .doctor-card h2 {
 
 /* Specialty */
 body.tv-kiosk .card-layout .doctor-card .specialty {
-    font-size: 6vh;     
+    font-size: 5.5vh;     
     color: #5b4a2c;
     margin: 0;
 	font-weight: 600;     /* Semi-bold for better readability */
