@@ -332,14 +332,14 @@ body.tv-kiosk header {
 
 /* NEW: Logo Styling */
 body.tv-kiosk #header-logo {
-    height: 16vh;           /* Logo takes up about 9% of screen height */
+    height: 14.5vh;           /* Logo takes up about 9% of screen height */
     width: auto;           /* Maintain aspect ratio */
     margin-bottom: 1.5vh;  /* Space between logo and text */
 }
 
 /* Adjusted Title Styling */
 body.tv-kiosk header h1 {
-    font-size: 8vh;        /* Slightly smaller to fit under logo */
+    font-size: 7.5vh;        /* Slightly smaller to fit under logo */
     line-height: 1;
     margin: 0;
     text-align: center;
@@ -406,7 +406,7 @@ body.tv-kiosk .card-layout .doctor-card .specialty {
 
 /* Status Pill */
 body.tv-kiosk .card-layout .doctor-card .status {
-    font-size: 7vh;     
+    font-size: 6vh;     
     padding: 1.5vh 0;     
     margin: 1.5vh 0;
     border-radius: 1.2vh; 
@@ -419,7 +419,7 @@ body.tv-kiosk .card-layout .doctor-card .status {
 
 /* Info Rows */
 body.tv-kiosk .card-layout .appointment-info {
-    font-size: 6.0vh;     
+    font-size: 5.5vh;     
     line-height: 1.4;
     margin: 0;
 	font-weight: 500;
