@@ -86,7 +86,17 @@
 	  "startButton": "Start Consultation",
       "finishButton": "Finish Consultation", 
       "callAgainButton": "Call Again",
-      "callAgainSent": "Signal sent!"
+      "callAgainSent": "Signal sent!",
+	  "scheduleTitle": "Work Schedule",
+      "vacationTitle": "Vacations & Days Off",
+      "vacationLabel": "Pick a date to block:",
+      "addVacationButton": "Block Date",
+      "saveSettingsButton": "Save All Settings",
+      "settingsSaved": "Settings saved successfully!",
+      "days": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      "addSlot": "+ Add Hours",
+      "copyToAll": "Copy Monday to All Weekdays",
+      "vacationBlocked": "Doctor is on vacation this day."
     },
     "display": {
       "headerDoctor": "Doctor",
@@ -184,7 +194,17 @@
 	  "startButton": "Iniciar Consulta",
       "finishButton": "Terminar Consulta",
       "callAgainButton": "Llamar Otra Vez",
-      "callAgainSent": "¡Señal enviada!"
+      "callAgainSent": "¡Señal enviada!",
+	  "scheduleTitle": "Horario de Trabajo",
+      "vacationTitle": "Vacaciones y Días Libres",
+      "vacationLabel": "Seleccionar fecha a bloquear:",
+      "addVacationButton": "Bloquear Fecha",
+      "saveSettingsButton": "Guardar Ajustes",
+      "settingsSaved": "¡Ajustes guardados!",
+      "days": ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"],
+      "addSlot": "+ Agregar Horario",
+      "copyToAll": "Copiar Lunes a toda la semana",
+      "vacationBlocked": "El doctor está de vacaciones este día."
     },
     "display": {
       "headerDoctor": "Doctor",

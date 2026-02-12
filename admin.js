@@ -54,6 +54,15 @@ const multiDoctorContainer = document.getElementById('multi-doctor-container');
 const multiDoctorSelect = document.getElementById('multi-doctor-select');
 const multiDoctorMessage = document.getElementById('multi-doctor-message');
 const selectDoctorLabel = document.getElementById('select-doctor-label');
+const scheduleTitle = document.getElementById('schedule-title');
+const scheduleContainer = document.getElementById('schedule-container');
+const copyScheduleBtn = document.getElementById('copy-schedule-btn');
+const vacationTitle = document.getElementById('vacation-title');
+const vacationLabel = document.getElementById('vacation-label');
+const vacationPicker = document.getElementById('vacation-date-picker');
+const addVacationBtn = document.getElementById('add-vacation-btn');
+const vacationList = document.getElementById('vacation-list');
+const saveSettingsBtn = document.getElementById('save-settings-btn');
 const changePasswordButton = document.getElementById('change-password-button');
 const passwordMessage = document.getElementById('password-message');
 
@@ -71,8 +80,9 @@ let allTexts = {};
 let selectedStatus = ''; 
 let selectedAppointment = null; 
 let currentDoctorStatus = ''; 
-// NEW: Track the ID of the appointment currently in consultation to update it later
-let currentConsultationApptId = null; 
+let currentConsultationApptId = null;
+let doctorSchedule = {}; // Stores the 7-day structure
+let doctorVacations = []; // Stores array of 'YYYY-MM-DD' 
 
 // =================================================================
 // --- Load Texts and Settings ---
@@ -113,6 +123,12 @@ function applyStaticTextsAdmin() {
     if (tabSettings) tabSettings.textContent = i18n.admin?.tabSettings || "Settings";
     if (settingsTitleH3) settingsTitleH3.textContent = i18n.admin?.settingsTitle || "Settings";
 	if (selectDoctorLabel) selectDoctorLabel.textContent = i18n.admin?.selectDoctorLabel || "Active Doctor Profile:";
+	if (scheduleTitle) scheduleTitle.textContent = i18n.admin?.scheduleTitle || "Work Schedule";
+    if (vacationTitle) vacationTitle.textContent = i18n.admin?.vacationTitle || "Vacations";
+    if (vacationLabel) vacationLabel.textContent = i18n.admin?.vacationLabel || "Pick date:";
+    if (addVacationBtn) addVacationBtn.textContent = i18n.admin?.addVacationButton || "Block";
+    if (saveSettingsBtn) saveSettingsBtn.textContent = i18n.admin?.saveSettingsButton || "Save Settings";
+    if (copyScheduleBtn) copyScheduleBtn.textContent = i18n.admin?.copyToAll || "Copy Mon to All";
     if (changePasswordButton) changePasswordButton.textContent = i18n.admin?.changePasswordButton || "Change Password";
 
     if (upcomingLabel) upcomingLabel.textContent = i18n.admin?.nextAppointmentTitle || "Select Next Patient";
@@ -181,6 +197,12 @@ async function loadDoctorProfileAndAppointments() {
         if (docSnap.exists) {
             const data = docSnap.data();
             currentDoctorStatus = data.status || 'Available';
+			
+			doctorSchedule = data.workingSchedule || getDefaultSchedule();
+            doctorVacations = data.vacations || [];
+            
+            renderScheduleBuilder();
+            renderVacationList();
             
 			if (data.multipleUsers === true) {
                 setupMultiDoctorDropdown(data);
@@ -496,66 +518,216 @@ function handleTabClick(event) {
     else if (clickedTab.id === 'tab-settings') { tabSettings.classList.add('active'); panelSettings.classList.add('active'); }
 }
 
-// ... (Initialize Calendar Function - Unchanged logic, fully included) ...
 function initializeCalendar(uid) {
     if (calendar) return;
+
+    // 1. Convert Doctor Schedule to FullCalendar "businessHours" format
+    const businessHours = [];
+    let minTime = "24:00"; // Start late, find earlier
+    let maxTime = "00:00"; // Start early, find later
+
+    // Iterate 0 (Sun) to 6 (Sat)
+    for (let i = 0; i < 7; i++) {
+        const dayData = doctorSchedule[i];
+        if (dayData && dayData.active && dayData.slots) {
+            dayData.slots.forEach(slot => {
+                businessHours.push({
+                    daysOfWeek: [i], // 0=Sun, 1=Mon...
+                    startTime: slot.start,
+                    endTime: slot.end
+                });
+
+                // Calculate bounds for zoom
+                if (slot.start < minTime) minTime = slot.start;
+                if (slot.end > maxTime) maxTime = slot.end;
+            });
+        }
+    }
+
+    // Default fallback if no schedule exists
+    if (businessHours.length === 0) {
+        minTime = "08:00";
+        maxTime = "20:00";
+    }
+
+    // Add padding to hours (e.g. show 1 hour before start and 1 hour after end)
+    // Simple string manipulation logic or MomentJS could handle this
+    // For simplicity, we just use the raw values or hardcode slight buffers if desired.
+
     calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'timeGridWeek',
         headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
-        editable: false, selectable: true, timeZone: MEXICO_TIMEZONE,
+        timeZone: MEXICO_TIMEZONE,
+        
+        // --- NEW CONFIGURATION ---
+        businessHours: businessHours, // Grays out non-working hours
+        selectConstraint: "businessHours", // Prevents clicking gray areas
+        slotMinTime: minTime, // Zooms the calendar view
+        slotMaxTime: maxTime, // Zooms the calendar view
+        firstDay: 1, // Start week on Monday
+        // -------------------------
+
+        editable: false, 
+        selectable: true, 
+        
+        // Handle clicking a date (Check Vacations)
         dateClick: function(clickInfo) { 
+             const dateStr = clickInfo.dateStr.split('T')[0]; // YYYY-MM-DD
+             
+             // CHECK VACATION
+             if (doctorVacations.includes(dateStr)) {
+                 Swal.fire('Vacation', i18n.admin?.vacationBlocked || "Doctor is on vacation.", 'warning');
+                 return;
+             }
+             
+             // ... (Keep your existing dateClick logic here) ...
+             // Be sure to check your previous code and paste the Swal/Booking logic back here!
+             // Just copy the 'const startDate = ...' block from your old file.
              const startDate = clickInfo.date;
              const startTimeFormatted = startDate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: MEXICO_TIMEZONE });
-             Swal.fire({
-                title: (i18n.admin?.bookAppointmentTitle || 'Book {time}').replace('{time}', startTimeFormatted),
-                width: '600px',
-                html: `<div><span class="swal2-label">${i18n.admin?.patientNameLabel}</span><input id="swal-input-name" class="swal2-input"><span class="swal2-label">${i18n.admin?.phoneLabel}</span><input id="swal-input-phone" class="swal2-input" type="tel"><span class="swal2-label">${i18n.admin?.durationLabel}</span><div id="swal-duration-buttons"><button class="swal2-confirm swal2-styled duration-button" data-duration="30">30 min</button><button class="swal2-confirm swal2-styled duration-button" data-duration="45">45 min</button><button class="swal2-confirm swal2-styled duration-button" data-duration="60">1 hour</button><button class="swal2-confirm swal2-styled duration-button" data-duration="90">1:30</button></div></div>`,
-                confirmButtonText: i18n.admin?.bookButton, focusConfirm: false,
-                didOpen: () => {
-                    const buttons = document.querySelectorAll('#swal-duration-buttons .duration-button');
-                    buttons.forEach(btn => btn.addEventListener('click', () => { buttons.forEach(b => b.style.border='none'); btn.style.border='2px solid blue'; document.getElementById('swal-duration-buttons').dataset.selectedDuration = btn.dataset.duration; }));
-                    const defBtn = document.querySelector('#swal-duration-buttons .duration-button[data-duration="30"]'); if(defBtn) defBtn.click();
-                },
-                preConfirm: () => {
-                    const name = document.getElementById('swal-input-name').value;
-                    const phone = document.getElementById('swal-input-phone').value;
-                    const dur = document.getElementById('swal-duration-buttons').dataset.selectedDuration;
-                    const phoneRegex = /^\d{10}$/;
-                    if(!name) { Swal.showValidationMessage(i18n.admin?.validationName); return false; }
-                    if(!phone) { Swal.showValidationMessage(i18n.admin?.validationPhone); return false; }
-                    if(!phoneRegex.test(phone)) { Swal.showValidationMessage(i18n.admin?.validationPhoneDigits); return false; }
-                    if(!dur) { Swal.showValidationMessage(i18n.admin?.validationDuration); return false; }
-                    return {name, phone, duration: parseInt(dur)};
-                }
-             }).then(async (res) => {
-                 if(res.isConfirmed && res.value) {
-                     const end = new Date(startDate.getTime() + res.value.duration * 60000);
-                     try {
-                        const q = await db.collection('appointments').where('doctorId','==',uid).where('start','<',end.toISOString()).where('end','>',startDate.toISOString()).get();
-                        if(!q.empty) { Swal.fire('Error', i18n.admin?.overlapErrorText, 'warning'); return; }
-                     } catch(e) { /* ignore index error for simplicity */ }
-                     
-                     db.collection('appointments').add({
-                         doctorId: uid, patientName: res.value.name, patientPhone: res.value.phone,
-                         start: startDate.toISOString(), end: end.toISOString()
-                         // 'status' field is initially undefined (or could be 'scheduled')
-                     }).then(() => Swal.fire(i18n.admin?.bookingSuccessTitle, '', 'success'));
-                 }
-             });
+             
+             // [PASTE YOUR EXISTING BOOKING MODAL CODE HERE]
+             // For brevity in this response, I am assuming you keep the modal code.
+             promptBooking(clickInfo, uid); // I moved the modal to a helper function below
         },
+        
         eventClick: function(clickInfo) {
-             Swal.fire({
-                 title: i18n.admin?.deleteConfirmTitle, text: (i18n.admin?.deleteConfirmText || '').replace('{patient}', clickInfo.event.title), showCancelButton: true, confirmButtonText: i18n.admin?.deleteButton
-             }).then(res => {
-                 if(res.isConfirmed) db.collection('appointments').doc(clickInfo.event.id).delete().then(() => Swal.fire(i18n.admin?.deleteSuccessTitle, '', 'success'));
-             });
+             // ... (Keep existing delete logic) ...
+             confirmDelete(clickInfo);
+        },
+
+        // Render Vacations as Background Events
+        events: function(info, successCallback, failureCallback) {
+            // 1. Fetch Appointments
+            db.collection('appointments')
+                .where('doctorId', '==', uid)
+                .where('start', '>=', info.start.toISOString())
+                .where('end', '<=', info.end.toISOString())
+                .get()
+                .then(snap => {
+                    const events = snap.docs.map(d => ({
+                        id: d.id, 
+                        title: d.data().patientName, 
+                        start: d.data().start, 
+                        end: d.data().end
+                    }));
+
+                    // 2. Add Vacation Backgrounds
+                    doctorVacations.forEach(vDate => {
+                        events.push({
+                            start: vDate,
+                            end: vDate,
+                            display: 'background',
+                            color: '#ff9f89', // Reddish background
+                            allDay: true
+                        });
+                    });
+
+                    successCallback(events);
+                })
+                .catch(e => failureCallback(e));
         }
     });
     calendar.render();
-    if (appointmentsListener) appointmentsListener();
-    appointmentsListener = db.collection('appointments').where('doctorId', '==', uid).onSnapshot(snap => {
-        const events = snap.docs.map(d => ({id: d.id, title: d.data().patientName, start: d.data().start, end: d.data().end}));
-        calendar.setOption('events', events);
+}
+
+// Helper to keep code clean: The Booking Prompt
+function promptBooking(clickInfo, uid) {
+    const startDate = clickInfo.date;
+    const startTimeFormatted = startDate.toLocaleTimeString("en-US", { 
+        hour: "2-digit", 
+        minute: "2-digit", 
+        hour12: true, 
+        timeZone: MEXICO_TIMEZONE 
+    });
+     
+    Swal.fire({
+        title: (i18n.admin?.bookAppointmentTitle || 'Book {time}').replace('{time}', startTimeFormatted),
+        width: '600px',
+        html: `<div>
+            <span class="swal2-label">${i18n.admin?.patientNameLabel}</span>
+            <input id="swal-input-name" class="swal2-input">
+            <span class="swal2-label">${i18n.admin?.phoneLabel}</span>
+            <input id="swal-input-phone" class="swal2-input" type="tel">
+            <span class="swal2-label">${i18n.admin?.durationLabel}</span>
+            <div id="swal-duration-buttons">
+                <button class="swal2-confirm swal2-styled duration-button" data-duration="30">30 min</button>
+                <button class="swal2-confirm swal2-styled duration-button" data-duration="45">45 min</button>
+                <button class="swal2-confirm swal2-styled duration-button" data-duration="60">1 hour</button>
+                <button class="swal2-confirm swal2-styled duration-button" data-duration="90">1:30</button>
+            </div>
+        </div>`,
+        confirmButtonText: i18n.admin?.bookButton, 
+        focusConfirm: false,
+        didOpen: () => {
+            const buttons = document.querySelectorAll('#swal-duration-buttons .duration-button');
+            buttons.forEach(btn => btn.addEventListener('click', () => { 
+                buttons.forEach(b => b.style.border='none'); 
+                btn.style.border='2px solid blue'; 
+                document.getElementById('swal-duration-buttons').dataset.selectedDuration = btn.dataset.duration; 
+            }));
+            const defBtn = document.querySelector('#swal-duration-buttons .duration-button[data-duration="30"]'); 
+            if(defBtn) defBtn.click();
+        },
+        preConfirm: () => {
+            const name = document.getElementById('swal-input-name').value;
+            const phone = document.getElementById('swal-input-phone').value;
+            const dur = document.getElementById('swal-duration-buttons').dataset.selectedDuration;
+            const phoneRegex = /^\d{10}$/;
+            
+            if(!name) { Swal.showValidationMessage(i18n.admin?.validationName); return false; }
+            if(!phone) { Swal.showValidationMessage(i18n.admin?.validationPhone); return false; }
+            if(!phoneRegex.test(phone)) { Swal.showValidationMessage(i18n.admin?.validationPhoneDigits); return false; }
+            if(!dur) { Swal.showValidationMessage(i18n.admin?.validationDuration); return false; }
+            
+            return {name, phone, duration: parseInt(dur)};
+        }
+    }).then(async (res) => {
+        if(res.isConfirmed && res.value) {
+            const end = new Date(startDate.getTime() + res.value.duration * 60000);
+            
+            try {
+                // Optional: Check for overlapping appointments locally before sending
+                // (This is a basic check, the server rules might also block it)
+                const q = await db.collection('appointments')
+                    .where('doctorId','==',uid)
+                    .where('start','<',end.toISOString())
+                    .where('end','>',startDate.toISOString())
+                    .get();
+                
+                if(!q.empty) { 
+                    Swal.fire('Error', i18n.admin?.overlapErrorText || "Overlap detected", 'warning'); 
+                    return; 
+                }
+            } catch(e) { console.error("Overlap check skipped", e); }
+
+            db.collection('appointments').add({
+                doctorId: uid, 
+                patientName: res.value.name, 
+                patientPhone: res.value.phone,
+                start: startDate.toISOString(), 
+                end: end.toISOString()
+            }).then(() => Swal.fire(i18n.admin?.bookingSuccessTitle, '', 'success'));
+        }
+    });
+}
+
+// Helper: Confirm Delete (Your existing logic)
+function confirmDelete(clickInfo) {
+    // Note: Don't allow deleting background events (Vacations)
+    if (clickInfo.event.display === 'background') return;
+
+    Swal.fire({
+         title: i18n.admin?.deleteConfirmTitle, 
+         text: (i18n.admin?.deleteConfirmText || '').replace('{patient}', clickInfo.event.title), 
+         showCancelButton: true, 
+         confirmButtonText: i18n.admin?.deleteButton
+    }).then(res => {
+         if(res.isConfirmed) db.collection('appointments').doc(clickInfo.event.id).delete()
+            .then(() => {
+                clickInfo.event.remove(); // Remove visually immediately
+                Swal.fire(i18n.admin?.deleteSuccessTitle, '', 'success');
+            });
     });
 }
 function getInitials(name) {
@@ -638,6 +810,213 @@ function setupMultiDoctorDropdown(data) {
             console.error(error);
             msgEl.textContent = i18n.admin?.doctorUpdateError || "Error updating.";
             msgEl.style.color = "red";
+        }
+    });
+}
+/** Helper: Default 9-5 Mon-Fri if nothing exists */
+function getDefaultSchedule() {
+    const s = {};
+    for(let i=0; i<7; i++) {
+        // 0=Sun, 6=Sat. Default Mon(1)-Fri(5) active
+        s[i] = { 
+            active: (i > 0 && i < 6), 
+            slots: [{start: "09:00", end: "17:00"}] 
+        };
+    }
+    return s;
+}
+// =================================================================
+// --- SCHEDULE & VACATION LOGIC ---
+// =================================================================
+
+function renderScheduleBuilder() {
+    if (!scheduleContainer) return;
+    scheduleContainer.innerHTML = '';
+    const days = i18n.admin?.days || ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    // 0=Sunday (FullCalendar standard) -> 6=Saturday
+    for (let i = 0; i < 7; i++) {
+        const dayData = doctorSchedule[i] || { active: false, slots: [] };
+        
+        const row = document.createElement('div');
+        row.style.borderBottom = '1px solid #eee';
+        row.style.padding = '10px 0';
+        
+        // Header: Checkbox + Day Name
+        const header = document.createElement('div');
+        header.style.display = 'flex';
+        header.style.alignItems = 'center';
+        header.style.marginBottom = '5px';
+        
+        const check = document.createElement('input');
+        check.type = 'checkbox';
+        check.checked = dayData.active;
+        check.style.width = 'auto';
+        check.style.marginRight = '10px';
+        check.onchange = (e) => {
+            doctorSchedule[i].active = e.target.checked;
+            renderScheduleBuilder(); // Re-render to show/hide slots
+        };
+
+        const label = document.createElement('span');
+        label.textContent = days[i];
+        label.style.fontWeight = 'bold';
+        if (!dayData.active) label.style.color = '#aaa';
+
+        header.appendChild(check);
+        header.appendChild(label);
+        row.appendChild(header);
+
+        // Slots Container
+        if (dayData.active) {
+            const slotsContainer = document.createElement('div');
+            slotsContainer.style.marginLeft = '25px';
+            
+            dayData.slots.forEach((slot, index) => {
+                const slotRow = document.createElement('div');
+                slotRow.style.display = 'flex';
+                slotRow.style.gap = '10px';
+                slotRow.style.marginBottom = '5px';
+                
+                const startIn = document.createElement('input');
+                startIn.type = 'time';
+                startIn.value = slot.start;
+                startIn.onchange = (e) => doctorSchedule[i].slots[index].start = e.target.value;
+
+                const endIn = document.createElement('input');
+                endIn.type = 'time';
+                endIn.value = slot.end;
+                endIn.onchange = (e) => doctorSchedule[i].slots[index].end = e.target.value;
+
+                // Delete Slot Button
+                const delBtn = document.createElement('button');
+                delBtn.textContent = 'x';
+                delBtn.style.backgroundColor = '#d9534f';
+                delBtn.style.color = 'white';
+                delBtn.style.border = 'none';
+                delBtn.style.borderRadius = '4px';
+                delBtn.style.width = '30px';
+                delBtn.onclick = () => {
+                    doctorSchedule[i].slots.splice(index, 1);
+                    renderScheduleBuilder();
+                };
+
+                slotRow.appendChild(startIn);
+                slotRow.appendChild(document.createTextNode(' - '));
+                slotRow.appendChild(endIn);
+                slotRow.appendChild(delBtn);
+                slotsContainer.appendChild(slotRow);
+            });
+
+            // Add Slot Button
+            const addBtn = document.createElement('button');
+            addBtn.textContent = i18n.admin?.addSlot || "+ Add Hours";
+            addBtn.className = "secondary-button";
+            addBtn.style.fontSize = "0.8rem";
+            addBtn.style.padding = "5px 10px";
+            addBtn.style.marginTop = "5px";
+            addBtn.onclick = () => {
+                doctorSchedule[i].slots.push({ start: "09:00", end: "13:00" });
+                renderScheduleBuilder();
+            };
+            
+            slotsContainer.appendChild(addBtn);
+            row.appendChild(slotsContainer);
+        }
+
+        scheduleContainer.appendChild(row);
+    }
+}
+
+// "Copy Monday" Utility
+if (copyScheduleBtn) {
+    copyScheduleBtn.addEventListener('click', () => {
+        const mon = doctorSchedule[1]; // Monday
+        // Copy to Tue(2) - Fri(5)
+        for (let i = 2; i <= 5; i++) {
+            // Deep copy the object
+            doctorSchedule[i] = JSON.parse(JSON.stringify(mon));
+        }
+        renderScheduleBuilder();
+        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Copied!', showConfirmButton: false, timer: 1000 });
+    });
+}
+
+// Vacation Logic
+function renderVacationList() {
+    if (!vacationList) return;
+    vacationList.innerHTML = '';
+    
+    // Sort dates
+    doctorVacations.sort();
+
+    doctorVacations.forEach((dateStr, index) => {
+        const tag = document.createElement('div');
+        tag.style.backgroundColor = '#e0e0e0';
+        tag.style.padding = '5px 10px';
+        tag.style.borderRadius = '15px';
+        tag.style.fontSize = '0.9rem';
+        tag.style.display = 'flex';
+        tag.style.alignItems = 'center';
+        tag.style.gap = '8px';
+
+        const span = document.createElement('span');
+        span.textContent = dateStr;
+        
+        const x = document.createElement('span');
+        x.textContent = '×';
+        x.style.cursor = 'pointer';
+        x.style.fontWeight = 'bold';
+        x.style.color = '#d9534f';
+        x.onclick = () => {
+            doctorVacations.splice(index, 1);
+            renderVacationList();
+        };
+
+        tag.appendChild(span);
+        tag.appendChild(x);
+        vacationList.appendChild(tag);
+    });
+}
+
+if (addVacationBtn) {
+    addVacationBtn.addEventListener('click', () => {
+        const val = vacationPicker.value;
+        if (!val) return;
+        if (!doctorVacations.includes(val)) {
+            doctorVacations.push(val);
+            renderVacationList();
+        }
+        vacationPicker.value = '';
+    });
+}
+
+// Save All Settings
+if (saveSettingsBtn) {
+    saveSettingsBtn.addEventListener('click', async () => {
+        if (!currentDoctorDocId) return;
+        saveSettingsBtn.disabled = true;
+        saveSettingsBtn.textContent = i18n.admin?.updatingStatusButton || "Saving...";
+        
+        try {
+            await db.collection('doctors').doc(currentDoctorDocId).update({
+                workingSchedule: doctorSchedule,
+                vacations: doctorVacations
+            });
+            Swal.fire('Success', i18n.admin?.settingsSaved || "Settings Saved", 'success');
+            
+            // Reload Calendar to apply changes
+            if (calendar) {
+                calendar.destroy();
+                calendar = null;
+                initializeCalendar(currentUser.uid);
+            }
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Error', 'Could not save settings.', 'error');
+        } finally {
+            saveSettingsBtn.disabled = false;
+            saveSettingsBtn.textContent = i18n.admin?.saveSettingsButton || "Save Settings";
         }
     });
 }
