@@ -880,59 +880,64 @@ if (getSyncLinkBtn) {
     getSyncLinkBtn.addEventListener('click', () => {
         if (!currentUser) return;
         
-        // 1. Construct the Feed URL (https)
-        // REPLACE 'us-central1-auna-board' with your actual project ID if different
+        // 1. Construct the Feed URL
         const projectId = "auna-board"; 
         const region = "us-central1";
         const feedUrl = `https://${region}-${projectId}.cloudfunctions.net/calendarFeed?uid=${currentUser.uid}`;
         
         // 2. Apple/Outlook Link (webcal://)
-        // This forces the device to try and open an App (Calendar/Outlook)
         const webcalUrl = feedUrl.replace('https://', 'webcal://');
 
-        // 3. Google Calendar Web Link (The "One-Click" Fix)
-        // We link to the Google Calendar website's "add" endpoint.
-        // We MUST use encodeURIComponent to make sure the URL passes correctly.
+        // 3. Google Calendar Web Link
         const googleWebUrl = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(feedUrl)}`;
+
+        // Common Button Style
+        const btnStyle = "display: block; width: 100%; padding: 12px; margin: 8px 0; border: none; border-radius: 5px; color: white; font-weight: bold; font-size: 1rem; text-decoration: none; text-align: center; cursor: pointer; box-sizing: border-box; font-family: sans-serif;";
 
         // 4. Show SweetAlert
         Swal.fire({
             title: i18n.admin?.calendarSyncTitle || "Sync Calendar",
             html: `
-                <p style="font-size:0.9rem; color:#555; margin-bottom:15px;">
-                    ${i18n.admin?.calendarSyncText || "Select your device:"}
+                <p style="font-size:1rem; color:#555; margin-bottom:20px;">
+                    ${i18n.admin?.calendarSyncText || "Select your device to subscribe:"}
                 </p>
                 
-                <div style="display:flex; flex-direction:column; gap:10px;">
+                <div style="padding: 0 10px;">
                     
-                    <a href="${googleWebUrl}" target="_blank" class="swal2-confirm swal2-styled" 
-                       style="width:100%; margin:0; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px; background-color:#DB4437;">
-                       📅 Google Calendar (Android/Web)
+                    <a href="${googleWebUrl}" target="_blank" 
+                       style="${btnStyle} background-color: #DB4437;">
+                       📅 Google Calendar
                     </a>
 
-                    <a href="${webcalUrl}" class="swal2-deny swal2-styled" 
-                       style="width:100%; margin:0; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px; background-color:#007AFF;">
-                       🍏 Apple Calendar (iPhone)
+                    <a href="${webcalUrl}" 
+                       style="${btnStyle} background-color: #007AFF;">
+                       🍏 Apple Calendar
                     </a>
 
-                    <button id="swal-copy-btn" class="swal2-cancel swal2-styled" 
-                       style="width:100%; margin:0; display:flex; align-items:center; justify-content:center; gap:8px; background-color:#666;">
-                       📋 ${i18n.admin?.copyLink || "Copy Link (Outlook)"}
+                    <button id="swal-copy-btn" 
+                       style="${btnStyle} background-color: #6c757d;">
+                       📋 ${i18n.admin?.copyLink || "Copy Link"}
                     </button>
 
                 </div>
-                <div style="margin-top:15px; font-size:0.75rem; color:#888;">
-                    <strong>Note for Google Users:</strong> The link opens in your browser. Click "Add" and it will sync to your app shortly.
+                <div style="margin-top:20px; font-size:0.85rem; color:#888; line-height: 1.4;">
+                    <strong>Google Users:</strong> The link opens Chrome.<br>Click "Add" and it will appear in your app.
                 </div>
             `,
-            showConfirmButton: false,
+            showConfirmButton: false, // Hide the default "OK" button
             showCloseButton: true,
             didOpen: () => {
                 const copyBtn = document.getElementById('swal-copy-btn');
                 copyBtn.addEventListener('click', () => {
                     navigator.clipboard.writeText(feedUrl);
+                    // Visual Feedback
+                    const originalText = copyBtn.textContent;
                     copyBtn.textContent = i18n.admin?.linkCopied || "Copied!";
-                    setTimeout(() => Swal.close(), 1000);
+                    copyBtn.style.backgroundColor = "#28a745"; // Green
+                    
+                    setTimeout(() => {
+                         Swal.close(); 
+                    }, 1500);
                 });
             }
         });
