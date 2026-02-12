@@ -807,11 +807,16 @@ function setupMultiDoctorDropdown(data) {
 }
 
 // --- BOOKING HELPERS ---
+// Helper to keep code clean: The Booking Prompt
 function promptBooking(clickInfo, uid) {
     const startDate = clickInfo.date;
     const startTimeFormatted = startDate.toLocaleTimeString("en-US", { 
-        hour: "2-digit", minute: "2-digit", hour12: true, timeZone: MEXICO_TIMEZONE 
+        hour: "2-digit", 
+        minute: "2-digit", 
+        hour12: true, 
+        timeZone: MEXICO_TIMEZONE 
     });
+     
     Swal.fire({
         title: (i18n.admin?.bookAppointmentTitle || 'Book {time}').replace('{time}', startTimeFormatted),
         width: '600px',
@@ -828,11 +833,13 @@ function promptBooking(clickInfo, uid) {
                 <button class="swal2-confirm swal2-styled duration-button" data-duration="90">1:30</button>
             </div>
         </div>`,
-        confirmButtonText: i18n.admin?.bookButton, focusConfirm: false,
+        confirmButtonText: i18n.admin?.bookButton, 
+        focusConfirm: false,
         didOpen: () => {
             const buttons = document.querySelectorAll('#swal-duration-buttons .duration-button');
             buttons.forEach(btn => btn.addEventListener('click', () => { 
-                buttons.forEach(b => b.style.border='none'); btn.style.border='2px solid blue'; 
+                buttons.forEach(b => b.style.border='none'); 
+                btn.style.border='2px solid blue'; 
                 document.getElementById('swal-duration-buttons').dataset.selectedDuration = btn.dataset.duration; 
             }));
             const defBtn = document.querySelector('#swal-duration-buttons .duration-button[data-duration="30"]'); 
@@ -843,23 +850,46 @@ function promptBooking(clickInfo, uid) {
             const phone = document.getElementById('swal-input-phone').value;
             const dur = document.getElementById('swal-duration-buttons').dataset.selectedDuration;
             const phoneRegex = /^\d{10}$/;
+            
             if(!name) { Swal.showValidationMessage(i18n.admin?.validationName); return false; }
             if(!phone) { Swal.showValidationMessage(i18n.admin?.validationPhone); return false; }
             if(!phoneRegex.test(phone)) { Swal.showValidationMessage(i18n.admin?.validationPhoneDigits); return false; }
             if(!dur) { Swal.showValidationMessage(i18n.admin?.validationDuration); return false; }
+            
             return {name, phone, duration: parseInt(dur)};
         }
     }).then(async (res) => {
         if(res.isConfirmed && res.value) {
             const end = new Date(startDate.getTime() + res.value.duration * 60000);
+            
             try {
-                const q = await db.collection('appointments').where('doctorId','==',uid).where('start','<',end.toISOString()).where('end','>',startDate.toISOString()).get();
-                if(!q.empty) { Swal.fire('Error', i18n.admin?.overlapErrorText || "Overlap detected", 'warning'); return; }
-            } catch(e) { }
+                // Optional: Check for overlapping appointments locally before sending
+                const q = await db.collection('appointments')
+                    .where('doctorId','==',uid)
+                    .where('start','<',end.toISOString())
+                    .where('end','>',startDate.toISOString())
+                    .get();
+                
+                if(!q.empty) { 
+                    Swal.fire('Error', i18n.admin?.overlapErrorText || "Overlap detected", 'warning'); 
+                    return; 
+                }
+            } catch(e) { console.error("Overlap check skipped", e); }
+
+            // --- SAVE TO DB ---
             db.collection('appointments').add({
-                doctorId: uid, patientName: res.value.name, patientPhone: res.value.phone,
-                start: startDate.toISOString(), end: end.toISOString()
-            }).then(() => Swal.fire(i18n.admin?.bookingSuccessTitle, '', 'success'));
+                doctorId: uid, 
+                patientName: res.value.name, 
+                patientPhone: res.value.phone,
+                start: startDate.toISOString(), 
+                end: end.toISOString()
+            }).then(() => {
+                // --- SUCCESS! ---
+                Swal.fire(i18n.admin?.bookingSuccessTitle, '', 'success');
+                
+                // --- THE FIX: Tell Calendar to reload events immediately ---
+                if (calendar) calendar.refetchEvents(); 
+            });
         }
     });
 }
