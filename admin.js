@@ -50,6 +50,10 @@ const updateMessage = document.getElementById('update-message');
 
 // --- Settings Panel elements ---
 const settingsTitleH3 = document.getElementById('settings-title-h3');
+const multiDoctorContainer = document.getElementById('multi-doctor-container');
+const multiDoctorSelect = document.getElementById('multi-doctor-select');
+const multiDoctorMessage = document.getElementById('multi-doctor-message');
+const selectDoctorLabel = document.getElementById('select-doctor-label');
 const changePasswordButton = document.getElementById('change-password-button');
 const passwordMessage = document.getElementById('password-message');
 
@@ -108,6 +112,7 @@ function applyStaticTextsAdmin() {
     if (tabCalendar) tabCalendar.textContent = i18n.admin?.tabCalendar || "Calendar";
     if (tabSettings) tabSettings.textContent = i18n.admin?.tabSettings || "Settings";
     if (settingsTitleH3) settingsTitleH3.textContent = i18n.admin?.settingsTitle || "Settings";
+	if (selectDoctorLabel) selectDoctorLabel.textContent = i18n.admin?.selectDoctorLabel || "Active Doctor Profile:";
     if (changePasswordButton) changePasswordButton.textContent = i18n.admin?.changePasswordButton || "Change Password";
 
     if (upcomingLabel) upcomingLabel.textContent = i18n.admin?.nextAppointmentTitle || "Select Next Patient";
@@ -177,7 +182,12 @@ async function loadDoctorProfileAndAppointments() {
             const data = docSnap.data();
             currentDoctorStatus = data.status || 'Available';
             
-            // NEW: If we are in consultation, try to recover the ID from localStorage
+			if (data.multipleUsers === true) {
+                setupMultiDoctorDropdown(data);
+            } else {
+                if (multiDoctorContainer) multiDoctorContainer.style.display = 'none';
+            }
+			
             if (currentDoctorStatus === 'In Consultation') {
                  currentConsultationApptId = localStorage.getItem('currentConsultationApptId');
             } else {
@@ -555,6 +565,81 @@ function getInitials(name) {
         .split(/\s+/)        // Split by spaces (handles single or multiple spaces)
         .map(word => word[0].toUpperCase()) // Take the first letter of each word
         .join('');           // Join them together
+}
+
+/**
+ * NEW: Populates the dropdown if multipleUsers is true
+ */
+function setupMultiDoctorDropdown(data) {
+    if (!multiDoctorContainer || !multiDoctorSelect) return;
+
+    // 1. Show Container
+    multiDoctorContainer.style.display = 'block';
+    
+    // 2. Find all fields starting with "doctorDisplayOption"
+    // Example: doctorDisplayOption1, doctorDisplayOption2, ...
+    const options = [];
+    Object.keys(data).forEach(key => {
+        if (key.startsWith('doctorDisplayOption')) {
+            options.push({
+                key: key,
+                name: data[key]
+            });
+        }
+    });
+
+    // 3. Sort options naturally (1, 2, 3...) based on the key
+    options.sort((a, b) => {
+        // Extract number from "doctorDisplayOption10" -> 10
+        const numA = parseInt(a.key.replace('doctorDisplayOption', '')) || 0;
+        const numB = parseInt(b.key.replace('doctorDisplayOption', '')) || 0;
+        return numA - numB;
+    });
+
+    // 4. Populate Select
+    multiDoctorSelect.innerHTML = '';
+    
+    // Add default/placeholder if needed, or just the list
+    options.forEach(opt => {
+        const el = document.createElement('option');
+        el.value = opt.name; // We save the NAME directly as the value
+        el.textContent = opt.name;
+        multiDoctorSelect.appendChild(el);
+    });
+
+    // 5. Select the current displayName (if it matches one of the options)
+    if (data.displayName) {
+        multiDoctorSelect.value = data.displayName;
+    }
+    
+    // 6. Remove old listeners to avoid duplicates (cloning is a quick hack)
+    const newSelect = multiDoctorSelect.cloneNode(true);
+    multiDoctorSelect.parentNode.replaceChild(newSelect, multiDoctorSelect);
+    
+    // 7. Add Change Listener (Auto-Save)
+    newSelect.addEventListener('change', async (e) => {
+        const newName = e.target.value;
+        const msgEl = document.getElementById('multi-doctor-message'); // Re-get fresh ref
+        
+        msgEl.textContent = i18n.admin?.updatingStatusButton || "Updating...";
+        msgEl.style.color = "#666";
+
+        try {
+            await db.collection('doctors').doc(currentDoctorDocId).update({
+                displayName: newName
+            });
+            msgEl.textContent = (i18n.admin?.doctorChangedSuccess || "Updated to: ") + newName;
+            msgEl.style.color = "green";
+            
+            // Optional: Clear success message after 3 seconds
+            setTimeout(() => { msgEl.textContent = ''; }, 3000);
+            
+        } catch (error) {
+            console.error(error);
+            msgEl.textContent = i18n.admin?.doctorUpdateError || "Error updating.";
+            msgEl.style.color = "red";
+        }
+    });
 }
 
 // =================================================================

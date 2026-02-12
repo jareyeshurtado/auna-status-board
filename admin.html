@@ -286,10 +286,18 @@
             
             <div id="panel-settings" class="tab-panel">
                 <div class="admin-form">
-                    <h3 id="settings-title-h3">Account Settings</h3> <!-- JS will set this -->
-                    <button id="change-password-button" class="secondary-button">Change Password</button> <!-- JS will set this -->
-                    <p id="password-message"></p>
-                    </div>
+					<h3 id="settings-title-h3">Account Settings</h3>
+
+					<div id="multi-doctor-container" style="display: none; border-bottom: 1px solid #eee; padding-bottom: 20px; margin-bottom: 20px;">
+						<label id="select-doctor-label">Select Active Doctor:</label>
+						<select id="multi-doctor-select" style="font-size: 1.1rem; padding: 10px; margin-top: 5px;">
+							</select>
+						<p id="multi-doctor-message" style="margin-top: 5px; font-size: 0.9rem; min-height: 20px;"></p>
+					</div>
+
+					<button id="change-password-button" class="secondary-button">Change Password</button>
+					<p id="password-message"></p>
+				</div>
             </div>
             
             </main>
