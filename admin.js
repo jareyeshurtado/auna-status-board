@@ -880,32 +880,49 @@ if (getSyncLinkBtn) {
     getSyncLinkBtn.addEventListener('click', () => {
         if (!currentUser) return;
         
-        // 1. Construct the Magic URL
-        // NOTE: Replace 'us-central1-auna-board' with your ACTUAL project ID if different
+        // 1. Construct the Feed URL (https)
+        // REPLACE 'us-central1-auna-board' with your actual project ID if different
         const projectId = "auna-board"; 
         const region = "us-central1";
         const feedUrl = `https://${region}-${projectId}.cloudfunctions.net/calendarFeed?uid=${currentUser.uid}`;
         
-        // 2. Special Link for Apple Devices (webcal:// opens the app directly)
+        // 2. Apple/Outlook Link (webcal://)
+        // This forces the device to try and open an App (Calendar/Outlook)
         const webcalUrl = feedUrl.replace('https://', 'webcal://');
 
-        // 3. Show SweetAlert with Options
+        // 3. Google Calendar Web Link (The "One-Click" Fix)
+        // We link to the Google Calendar website's "add" endpoint.
+        // We MUST use encodeURIComponent to make sure the URL passes correctly.
+        const googleWebUrl = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(feedUrl)}`;
+
+        // 4. Show SweetAlert
         Swal.fire({
-            title: i18n.admin?.calendarSyncTitle,
+            title: i18n.admin?.calendarSyncTitle || "Sync Calendar",
             html: `
                 <p style="font-size:0.9rem; color:#555; margin-bottom:15px;">
-                    ${i18n.admin?.calendarSyncText}
+                    ${i18n.admin?.calendarSyncText || "Select your device:"}
                 </p>
-                <div style="background:#f0f0f0; padding:10px; border-radius:5px; word-break:break-all; font-family:monospace; margin-bottom:15px; font-size:0.85rem;">
-                    ${feedUrl}
-                </div>
+                
                 <div style="display:flex; flex-direction:column; gap:10px;">
-                    <button id="swal-copy-btn" class="swal2-confirm swal2-styled" style="width:100%; margin:0;">
-                        📋 ${i18n.admin?.copyLink || "Copy Link (Google/Outlook)"}
-                    </button>
-                    <a href="${webcalUrl}" class="swal2-deny swal2-styled" style="width:100%; margin:0; text-decoration:none; display:inline-block;">
-                        🍏 ${i18n.admin?.addToIphone || "Subscribe on iPhone"}
+                    
+                    <a href="${googleWebUrl}" target="_blank" class="swal2-confirm swal2-styled" 
+                       style="width:100%; margin:0; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px; background-color:#DB4437;">
+                       📅 Google Calendar (Android/Web)
                     </a>
+
+                    <a href="${webcalUrl}" class="swal2-deny swal2-styled" 
+                       style="width:100%; margin:0; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px; background-color:#007AFF;">
+                       🍏 Apple Calendar (iPhone)
+                    </a>
+
+                    <button id="swal-copy-btn" class="swal2-cancel swal2-styled" 
+                       style="width:100%; margin:0; display:flex; align-items:center; justify-content:center; gap:8px; background-color:#666;">
+                       📋 ${i18n.admin?.copyLink || "Copy Link (Outlook)"}
+                    </button>
+
+                </div>
+                <div style="margin-top:15px; font-size:0.75rem; color:#888;">
+                    <strong>Note for Google Users:</strong> The link opens in your browser. Click "Add" and it will sync to your app shortly.
                 </div>
             `,
             showConfirmButton: false,
@@ -915,9 +932,7 @@ if (getSyncLinkBtn) {
                 copyBtn.addEventListener('click', () => {
                     navigator.clipboard.writeText(feedUrl);
                     copyBtn.textContent = i18n.admin?.linkCopied || "Copied!";
-                    setTimeout(() => {
-                         Swal.close(); 
-                    }, 1000);
+                    setTimeout(() => Swal.close(), 1000);
                 });
             }
         });

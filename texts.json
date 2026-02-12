@@ -215,7 +215,7 @@
       "addSlot": "+ Agregar Horario",
       "copyToAll": "Copiar Lunes a toda la semana",
       "vacationBlocked": "El doctor está de vacaciones este día.",
-	  "calendarSyncTitle": "Sincronizar con iPhone/Google/Outlook",
+	  "calendarSyncTitle": "Sincronizar Calendario con iPhone/Google/Outlook",
       "calendarSyncBtn": "Obtener Enlace de Calendario",
       "calendarSyncText": "Use este enlace para suscribirse a sus citas desde su celular o Google Calendar.",
       "copyLink": "Syncronizar Calendario",
