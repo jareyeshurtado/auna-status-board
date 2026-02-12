@@ -9,220 +9,48 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     
     <style>
-        /* [Your existing <style> code goes here...] */
-        /* [It's all the same, so I've hidden it for brevity] */
-        body {
-            max-width: 800px;
-            margin: 20px auto;
-            background-color: #fff;
-        }
-        .admin-form {
-            display: grid;
-            gap: 15px;
-            padding: 20px;
-            background-color: #f9f9f9;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-        }
-        .admin-form label {
-            font-weight: bold;
-            font-size: 1.1rem;
-            margin-bottom: -5px;
-        }
-        .admin-form input,
-        .admin-form select,
-        .admin-form button {
-            width: 100%;
-            padding: 12px;
-            font-size: 1rem;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            box-sizing: border-box; 
-        }
-        .admin-form button {
-            background-color: #007bff;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            border: none;
-            transition: background-color 0.2s;
-        }
-        .admin-form button:hover {
-            background-color: #0056b3;
-        }
-        /* Style for the appointment selection list */
-        .appointment-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        .appointment-item {
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background-color: white;
-            cursor: pointer;
-            transition: border-color 0.2s, background-color 0.2s;
-        }
-        .appointment-item:hover {
-            background-color: #f0f8ff;
-        }
-        .appointment-item.selected {
-            border: 2px solid #007bff;
-            background-color: #e6f2ff;
-        }
-        .appointment-item h4 {
-            margin: 0 0 5px 0;
-            font-size: 1.1rem;
-        }
-        .appointment-item p {
-            margin: 0;
-            color: #666;
-            font-size: 0.9rem;
-        }
-
-        .status-buttons {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap; /* Allow wrapping on small screens */
-        }
-        .status-buttons button {
-            flex: 1 1 45%; /* Grow to fill space */
-        }
-        .status-buttons button.selected {
-            border: 2px solid black !important; /* Make selection obvious */
-        }
-        #update-message {
-            text-align: center;
-            font-size: 1.1rem;
-            font-weight: bold;
-            margin-top: 15px;
-        }
-        #login-container {
-            max-width: 400px;
-            margin: 50px auto;
-            padding: 25px;
-            background-color: #f9f9f9;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            text-align: center;
-        }
-        #login-container h2 {
-            margin-top: 0;
-        }
-        #login-container input {
-            width: 100%;
-            padding: 12px;
-            font-size: 1rem;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            box-sizing: border-box;
-            margin-bottom: 15px;
-        }
-        #login-container button {
-            width: 100%;
-            padding: 12px;
-            font-size: 1.1rem;
-            border: none;
-            border-radius: 5px;
-            background-color: #007bff;
-            color: white;
-            cursor: pointer;
-        }
-        #login-message {
-            color: #c91c1c;
-            font-weight: bold;
-            margin-top: 15px;
-        }
-        #sign-out-button {
-            background-color: #e53935;
-            color: white;
-            padding: 8px 15px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            float: right; 
-            font-size: 0.9rem;
-        }
-        .admin-form button.secondary-button {
-            background-color: #6c757d;
-            margin-top: 10px;
-        }
-        .admin-form button.secondary-button:hover {
-            background-color: #5a6268;
-        }
-        #password-message {
-            text-align: center;
-            font-size: 1.0rem;
-            font-weight: bold;
-        }
-        .tab-navigation {
-            display: flex;
-            border-bottom: 2px solid #ddd;
-            margin-bottom: 20px;
-        }
-        .tab-button {
-            padding: 10px 20px;
-            cursor: pointer;
-            font-size: 1.2rem;
-            font-weight: 600;
-            border: none;
-            background-color: transparent;
-            color: #555;
-            border-bottom: 3px solid transparent; /* For the active state */
-            margin-bottom: -2px; /* Aligns with the container's border */
-        }
-        .tab-button.active {
-            color: #007bff;
-            border-bottom-color: #007bff;
-        }
-        .tab-panel {
-            display: none;
-        }
-        .tab-panel.active {
-            display: block;
-        }
-        .swal2-html-container {
-            overflow-x: hidden !important;
-            text-align: center;
-        }
-        .swal2-label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            text-align: left;
-            max-width: 90%;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        .swal2-input {
-            width: 90% !important;
-            box-sizing: border-box;
-            margin-bottom: 15px !important;
-        }
-        #swal-duration-buttons {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-bottom: 15px;
-            max-width: 90%;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        #swal-duration-buttons .duration-button {
-            flex-basis: calc(50% - 10px);
-            margin: 5px !important;
-            padding: 10px 5px;
-            box-sizing: border-box;
-            min-width: 80px;
-        }
+        /* ... (Keep your existing styles) ... */
+        body { max-width: 800px; margin: 20px auto; background-color: #fff; }
+        .admin-form { display: grid; gap: 15px; padding: 20px; background-color: #f9f9f9; border-radius: 8px; border: 1px solid #ddd; }
+        .admin-form label { font-weight: bold; font-size: 1.1rem; margin-bottom: -5px; }
+        .admin-form input, .admin-form select, .admin-form button { width: 100%; padding: 12px; font-size: 1rem; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
+        .admin-form button { background-color: #007bff; color: white; font-weight: bold; cursor: pointer; border: none; transition: background-color 0.2s; }
+        .admin-form button:hover { background-color: #0056b3; }
+        .appointment-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+        .appointment-item { padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: white; cursor: pointer; transition: border-color 0.2s, background-color 0.2s; }
+        .appointment-item:hover { background-color: #f0f8ff; }
+        .appointment-item.selected { border: 2px solid #007bff; background-color: #e6f2ff; }
+        .appointment-item h4 { margin: 0 0 5px 0; font-size: 1.1rem; }
+        .appointment-item p { margin: 0; color: #666; font-size: 0.9rem; }
+        .status-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+        .status-buttons button { flex: 1 1 45%; }
+        .status-buttons button.selected { border: 2px solid black !important; }
+        #update-message { text-align: center; font-size: 1.1rem; font-weight: bold; margin-top: 15px; }
+        #login-container { max-width: 400px; margin: 50px auto; padding: 25px; background-color: #f9f9f9; border: 1px solid #ddd; border-radius: 8px; text-align: center; }
+        #login-container h2 { margin-top: 0; }
+        #login-container input { width: 100%; padding: 12px; font-size: 1rem; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; margin-bottom: 15px; }
+        #login-container button { width: 100%; padding: 12px; font-size: 1.1rem; border: none; border-radius: 5px; background-color: #007bff; color: white; cursor: pointer; }
+        #login-message { color: #c91c1c; font-weight: bold; margin-top: 15px; }
+        #sign-out-button { background-color: #e53935; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; float: right; font-size: 0.9rem; }
+        .admin-form button.secondary-button { background-color: #6c757d; margin-top: 10px; }
+        .admin-form button.secondary-button:hover { background-color: #5a6268; }
+        #password-message { text-align: center; font-size: 1.0rem; font-weight: bold; }
+        .tab-navigation { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 20px; }
+        .tab-button { padding: 10px 20px; cursor: pointer; font-size: 1.2rem; font-weight: 600; border: none; background-color: transparent; color: #555; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+        .tab-button.active { color: #007bff; border-bottom-color: #007bff; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+        .swal2-html-container { overflow-x: hidden !important; text-align: center; }
+        .swal2-label { display: block; margin-bottom: 5px; font-weight: bold; text-align: left; max-width: 90%; margin-left: auto; margin-right: auto; }
+        .swal2-input { width: 90% !important; box-sizing: border-box; margin-bottom: 15px !important; }
+        #swal-duration-buttons { display: flex; flex-wrap: wrap; justify-content: center; margin-bottom: 15px; max-width: 90%; margin-left: auto; margin-right: auto; }
+        #swal-duration-buttons .duration-button { flex-basis: calc(50% - 10px); margin: 5px !important; padding: 10px 5px; box-sizing: border-box; min-width: 80px; }
     </style>
 </head>
 <body>
 
     <div id="login-container">
-        <h2 id="login-title-h2">Doctor Admin Login</h2> <!-- JS will set this -->
+        <h2 id="login-title-h2">Doctor Admin Login</h2>
         <input type="email" id="login-email" placeholder="Email Address">
         <input type="password" id="login-password" placeholder="Password">
         <button id="login-button">Login</button>
@@ -233,68 +61,47 @@
         
         <header>
             <button id="sign-out-button">Sign Out</button>
-            <h1 id="admin-title-h1">Doctor Status Control</h1> <!-- JS will set this -->
+            <h1 id="admin-title-h1">Doctor Status Control</h1>
         </header>
 
         <nav class="tab-navigation">
             <button id="tab-status" class="tab-button active">Update Status</button>
             <button id="tab-calendar" class="tab-button">Bookings Calendar</button>
+            <button id="tab-schedule" class="tab-button">Work Schedule</button>
             <button id="tab-settings" class="tab-button">Settings</button>
         </nav>
         <main>
 
             <div id="panel-status" class="tab-panel active">
                 <div class="admin-form">
-                    
-                    <!-- 1. Upcoming Appointments Selection -->
                     <label id="upcoming-label">Select Next Patient</label>
                     <div id="upcoming-appointments-list" class="appointment-list">
-                        <!-- JS will populate this with next 3 appointments -->
                         <div class="appointment-item placeholder">Loading upcoming appointments...</div>
                     </div>
+                    <button id="main-action-button" style="background-color: #28a745; margin-bottom: 10px;">Start Consultation</button>
+                    <button id="call-again-button" style="display: none; background-color: #17a2b8; color: white; margin-bottom: 20px;">Call Again</button>
 
-                    <!-- 2. Action Button (Context Sensitive) -->
-                    <button id="main-action-button" style="background-color: #28a745; margin-bottom: 20px;">Start Consultation</button>
-					
-					<button id="call-again-button" style="display: none; background-color: #17a2b8; color: white; margin-bottom: 20px;">Call Again</button>
-
-                    <!-- 3. Manual Status Overrides -->
                     <label id="manual-status-label" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">Manual Status Override</label>
                     <div class="status-buttons" id="status-buttons">
                         <button type="button" data-status="Available">Available</button>
                         <button type="button" data-status="Consultation Delayed">Delayed</button>
                         <button type="button" data-status="Not Available">Not Available</button>
-                        <!-- "In Consultation" is handled by the main action button now -->
                     </div>
-                    
                     <button id="manual-update-button" class="secondary-button" style="margin-top: 10px;">Set Manual Status</button>
-
                     <p id="update-message"></p>
-                    
                 </div>
             </div>
+
             <div id="panel-calendar" class="tab-panel">
-                
                 <div id="calendar-container"></div>
-                
                 <p style="text-align: center; color: #555; margin-top: 15px;">
-                    Click on a date to book a new appointment.
-                    <br>
+                    Click on a date to book a new appointment.<br>
                     Click on an existing appointment to delete it.
                 </p>
             </div>
             
-            <div id="panel-settings" class="tab-panel">
+            <div id="panel-schedule" class="tab-panel">
                 <div class="admin-form">
-                    
-                    <h3 id="settings-title-h3">Account Settings</h3>
-
-                    <div id="multi-doctor-container" style="display: none; border-bottom: 1px solid #eee; padding-bottom: 20px; margin-bottom: 20px;">
-                        <label id="select-doctor-label">Active Doctor Profile:</label>
-                        <select id="multi-doctor-select" style="font-size: 1.1rem; padding: 10px; margin-top: 5px;"></select>
-                        <p id="multi-doctor-message" style="margin-top: 5px; font-size: 0.9rem; min-height: 20px;"></p>
-                    </div>
-
                     <h3 id="schedule-title">Work Schedule</h3>
                     <div id="schedule-container" style="background: white; padding: 15px; border: 1px solid #ddd; border-radius: 8px;">
                         </div>
@@ -312,17 +119,26 @@
                     </div>
 
                     <button id="save-settings-btn" style="background-color: #28a745; margin-top: 30px; font-size: 1.2rem;">Save All Settings</button>
+                </div>
+            </div>
 
-                    <hr style="margin: 30px 0; border: 0; border-top: 1px solid #eee;">
+            <div id="panel-settings" class="tab-panel">
+                <div class="admin-form">
+                    <h3 id="settings-title-h3">Account Settings</h3>
+
+                    <div id="multi-doctor-container" style="display: none; border-bottom: 1px solid #eee; padding-bottom: 20px; margin-bottom: 20px;">
+                        <label id="select-doctor-label">Active Doctor Profile:</label>
+                        <select id="multi-doctor-select" style="font-size: 1.1rem; padding: 10px; margin-top: 5px;"></select>
+                        <p id="multi-doctor-message" style="margin-top: 5px; font-size: 0.9rem; min-height: 20px;"></p>
+                    </div>
+
                     <button id="change-password-button" class="secondary-button">Change Password</button>
                     <p id="password-message"></p>
-
                 </div>
             </div>
             
-            </main>
+        </main>
     </div> 
-
 
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -330,11 +146,8 @@
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.34/moment-timezone-with-data.min.js"></script>
-    
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.14/index.global.min.js'></script>
-    
     <script src='https://cdn.jsdelivr.net/npm/@fullcalendar/moment-timezone@6.1.14/index.global.min.js'></script>
-    
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
     <script src="admin.js"></script>
     
