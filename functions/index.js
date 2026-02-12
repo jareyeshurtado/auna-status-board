@@ -85,29 +85,39 @@ exports.calendarFeed = onRequest(async (req, res) => {
     }
 });
 
+/**
+ * Sends a Push Notification when a new appointment is created.
+ */
 exports.sendAppointmentNotification = onDocumentCreated("appointments/{apptId}", async (event) => {
     const snapshot = event.data;
     if (!snapshot) return;
 
     const data = snapshot.data();
-    const doctorId = data.doctorId;
+    const doctorId = data.doctorId; // This is the Auth UID (e.g., Q4W...)
     
     if (!doctorId) return;
 
     try {
-        // 1. Get the Doctor's FCM Token from their profile
-        const doctorDoc = await db.collection('doctors').doc(doctorId).get();
-        
-        if (!doctorDoc.exists) {
-            console.log(`No doctor found for ID: ${doctorId}`);
-            return;
+        let fcmToken = null;
+
+        // STRATEGY 1: Try to find a document with this exact ID
+        let doctorDoc = await db.collection('doctors').doc(doctorId).get();
+
+        if (doctorDoc.exists) {
+            fcmToken = doctorDoc.data().fcmToken;
+        } else {
+            // STRATEGY 2: If not found, search for the doctor who has this 'authUID'
+            console.log(`Doctor ID ${doctorId} not found as a filename. Searching via authUID...`);
+            const query = await db.collection('doctors').where('authUID', '==', doctorId).limit(1).get();
+            
+            if (!query.empty) {
+                fcmToken = query.docs[0].data().fcmToken;
+                console.log(`Found doctor via authUID: ${query.docs[0].id}`);
+            }
         }
 
-        const doctorData = doctorDoc.data();
-        const fcmToken = doctorData.fcmToken;
-
         if (!fcmToken) {
-            console.log(`Doctor ${doctorId} has no notification token registered.`);
+            console.log(`No token found for Doctor ID: ${doctorId}. They may not have enabled notifications yet.`);
             return;
         }
 
@@ -118,7 +128,6 @@ exports.sendAppointmentNotification = onDocumentCreated("appointments/{apptId}",
                 title: 'New Appointment!',
                 body: `${data.patientName} - ${new Date(data.start).toLocaleTimeString('en-US', {timeZone: 'America/Mexico_City', hour: '2-digit', minute:'2-digit'})}`
             },
-            // Optional: Data payload for clicking the notification
             data: {
                 appointmentId: event.params.apptId
             }
