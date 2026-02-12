@@ -1,130 +1,84 @@
-// This is the complete file for functions/index.js with periodic updates
-
-// --- We no longer need these, so we comment them out ---
-// const { onDocumentWritten } = require("firebase-functions/v2/firestore");
-// const { onSchedule } = require("firebase-functions/v2/scheduler");
-
 const { setGlobalOptions } = require("firebase-functions/v2");
+const { onRequest } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
 const db = admin.firestore();
 
 // Set global options
-setGlobalOptions({ region: "us-central1" }); // Or your preferred region
-const MEXICO_TIMEZONE = "America/Mexico_City";
+setGlobalOptions({ region: "us-central1" });
 
 /**
- * Helper function to format an appointment object into a nice string.
- * e.g., "John Doe (10:30 AM)"
- * (This function is no longer called by Cloud Functions,
- * but we'll leave it here in case you ever need it again.)
+ * Generates an iCalendar (.ics) feed for a specific doctor.
+ * URL: https://us-central1-auna-board.cloudfunctions.net/calendarFeed?uid=DOCTOR_ID
  */
-function formatApptText(appointment) {
-  if (!appointment || !appointment.start || !appointment.patientName) {
-    return "---"; // Handle cases where data might be missing
-  }
-  
-  const initials = appointment.patientName
-      .trim()
-      .split(/\s+/)
-      .map(part => part[0].toUpperCase())
-      .join('');
-	  
-  const apptTime = new Date(appointment.start).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: MEXICO_TIMEZONE,
-  });
-  return `${initials} (${apptTime})`;
-}
+exports.calendarFeed = onRequest(async (req, res) => {
+    const doctorUid = req.query.uid;
 
-/**
- * Calculates and updates the current appointment status for a specific doctor.
- * (This function is no longer called by Cloud Functions,
- * but we'll leave it here in case you ever need it again.)
- * @param {string} doctorAuthUid The authUID of the doctor to update.
- * @return {Promise<void>} A promise that resolves when the update is complete.
- */
-async function calculateAndUpdateDoctorStatus(doctorAuthUid) {
-  if (!doctorAuthUid) {
-    console.error("calculateAndUpdateDoctorStatus called without doctorAuthUid");
-    return;
-  }
-  console.log(`Calculating status for doctor: ${doctorAuthUid}`);
+    if (!doctorUid) {
+        res.status(400).send("Missing 'uid' parameter.");
+        return;
+    }
 
-  // 1. Find the doctor's document ref using their authUID
-  const doctorQuery = await db.collection("doctors")
-                            .where("authUID", "==", doctorAuthUid)
-                            .limit(1)
-                            .get();
+    try {
+        // 1. Fetch future appointments (and recent past ones, e.g., last 7 days)
+        const now = new Date();
+        const pastDate = new Date();
+        pastDate.setDate(now.getDate() - 7); // Include last week for reference
 
-  if (doctorQuery.empty) {
-    console.error(`Could not find doctor document for authUID: ${doctorAuthUid}`);
-    return;
-  }
-  
-  const doctorRef = doctorQuery.docs[0].ref;
-  const doctorData = doctorQuery.docs[0].data(); // Get the doctor's data
+        const snapshot = await db.collection("appointments")
+            .where("doctorId", "==", doctorUid)
+            .where("start", ">=", pastDate.toISOString())
+            .get();
 
-  const currentStatus = doctorData.status;
-  
-  if (
-    currentStatus === "In Consultation" ||  // English
-    currentStatus === "En Consulta" ||        // Spanish
-    currentStatus === "Consultation Delayed" || // English
-    currentStatus === "Consulta Retrasada"    // Spanish
-  ) {
-    console.log(`Doctor ${doctorAuthUid} is busy with status: "${currentStatus}". Skipping automatic appointment update.`);
-    return; 
-  }
+        // 2. Start building the ICS file content
+        let icsContent = [
+            "BEGIN:VCALENDAR",
+            "VERSION:2.0",
+            "PRODID:-//AUNA//Doctor Board//EN",
+            "CALSCALE:GREGORIAN",
+            "METHOD:PUBLISH",
+            "X-WR-CALNAME:AUNA Citas",  // Name of the calendar
+            "X-WR-TIMEZONE:America/Mexico_City"
+        ];
 
-  // 2. Get the start/end of TODAY in the correct timezone.
-  const now = new Date();
-  const todayStartApprox = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0); // Server's local time start
-  const todayEndApprox = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0); // Server's local time end
+        // 3. Loop through appointments and create Events
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const created = new Date().toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+            
+            // Format dates for iCal (YYYYMMDDTHHmmSSZ)
+            // Firebase stores ISO strings, so we parse and reformat to UTC
+            const start = new Date(data.start).toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+            const end = new Date(data.end).toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
 
+            let description = `Paciente: ${data.patientName}\\nTel: ${data.patientPhone || 'N/A'}`;
+            let summary = `Cita: ${data.patientName}`;
 
-  // 3. Query all of this doctor's appointments for TODAY
-  const apptSnapshot = await db.collection("appointments")
-      .where("doctorId", "==", doctorAuthUid)
-      .where("start", ">=", todayStartApprox.toISOString()) 
-      .where("start", "<", todayEndApprox.toISOString())
-      .orderBy("start", "asc")
-      .get();
+            // Handle Cancelled/Completed logic visually in the calendar
+            if (data.status === 'completed') summary = `[Completed] ${summary}`;
+            
+            icsContent.push("BEGIN:VEVENT");
+            icsContent.push(`UID:${doc.id}@auna-board.web.app`);
+            icsContent.push(`DTSTAMP:${created}`);
+            icsContent.push(`DTSTART:${start}`);
+            icsContent.push(`DTEND:${end}`);
+            icsContent.push(`SUMMARY:${summary}`);
+            icsContent.push(`DESCRIPTION:${description}`);
+            icsContent.push("STATUS:CONFIRMED");
+            icsContent.push("END:VEVENT");
+        });
 
-  let currentText = "---";
-  const nowTimestamp = Date.now(); 
+        // 4. Close Calendar
+        icsContent.push("END:VCALENDAR");
 
-  if (!apptSnapshot.empty) {
-    const appointments = apptSnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-            ...data,
-            startTimeMs: new Date(data.start).getTime(),
-            endTimeMs: new Date(data.end).getTime()
-        };
-    }).filter(appt => !isNaN(appt.startTimeMs) && !isNaN(appt.endTimeMs)); 
+        // 5. Send Response
+        res.set("Content-Type", "text/calendar; charset=utf-8");
+        res.set("Content-Disposition", "attachment; filename=\"citas-auna.ics\"");
+        res.send(icsContent.join("\r\n"));
 
-
-    // Find current appointment
-    const currentAppt = appointments.find(appt =>
-      nowTimestamp >= appt.startTimeMs && nowTimestamp < appt.endTimeMs
-    );
-
-    
-
-
-    // Determine text based on findings
-     if (currentAppt) {
-        currentText = formatApptText(currentAppt);
-    } 
-  }
-
-  // 4. Update the doctor's document
-  console.log(`Updating doctor ${doctorAuthUid}: Current: ${currentText}`);
-  return doctorRef.update({
-    autoCurrentAppointment: currentText,
-  });
-}
+    } catch (error) {
+        console.error("Error generating calendar:", error);
+        res.status(500).send("Internal Server Error");
+    }
+});

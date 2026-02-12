@@ -98,7 +98,13 @@
       "days": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
       "addSlot": "+ Add Hours",
       "copyToAll": "Copy Monday to All Weekdays",
-      "vacationBlocked": "Doctor is on vacation this day."
+      "vacationBlocked": "Doctor is on vacation this day.",
+	  "calendarSyncTitle": "Sync with Phone/Google/Outlook",
+      "calendarSyncBtn": "Get Calendar Link",
+      "calendarSyncText": "Use this link to subscribe to your appointments from your phone or Google Calendar.",
+      "copyLink": "Copy Link",
+      "addToIphone": "Subscribe on iPhone/Mac",
+      "linkCopied": "Link copied to clipboard!"
     },
     "display": {
       "headerDoctor": "Doctor",
@@ -135,7 +141,7 @@
       "phoneLabel": "Teléfono:",
       "timeLabel": "Hora:",
       "startButton": "Iniciar Consulta",
-      "noAppointmentsFound": "Has terminado todas tus citas de hoy!'.",
+      "noAppointmentsFound": "Has terminado todas tus citas de hoy!",
       "consultationStartSuccess": "¡Consulta iniciada!",
       "consultationStartError": "No se pudo iniciar la consulta.",
       "controlTitle": "Control de Estado de Doctores",
@@ -208,7 +214,13 @@
       "days": ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"],
       "addSlot": "+ Agregar Horario",
       "copyToAll": "Copiar Lunes a toda la semana",
-      "vacationBlocked": "El doctor está de vacaciones este día."
+      "vacationBlocked": "El doctor está de vacaciones este día.",
+	  "calendarSyncTitle": "Sincronizar con iPhone/Google/Outlook",
+      "calendarSyncBtn": "Obtener Enlace de Calendario",
+      "calendarSyncText": "Use este enlace para suscribirse a sus citas desde su celular o Google Calendar.",
+      "copyLink": "Syncronizar Calendario",
+      "addToIphone": "Suscribir en iPhone/Mac",
+      "linkCopied": "¡Link copiado!"
     },
     "display": {
       "headerDoctor": "Doctor",

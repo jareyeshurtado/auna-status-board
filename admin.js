@@ -31,7 +31,10 @@ const signOutButton = document.getElementById('sign-out-button');
 // --- Tab elements ---
 const tabStatus = document.getElementById('tab-status');
 const tabCalendar = document.getElementById('tab-calendar');
-const tabSchedule = document.getElementById('tab-schedule'); // NEW
+const tabSchedule = document.getElementById('tab-schedule'); 
+const syncTitle = document.getElementById('sync-title');
+const syncDesc = document.getElementById('sync-desc');
+const getSyncLinkBtn = document.getElementById('get-sync-link-btn');
 const tabSettings = document.getElementById('tab-settings');
 
 const panelStatus = document.getElementById('panel-status');
@@ -124,7 +127,10 @@ function applyStaticTextsAdmin() {
     // TABS
     if (tabStatus) tabStatus.textContent = i18n.admin?.tabStatus || "Status";
     if (tabCalendar) tabCalendar.textContent = i18n.admin?.tabCalendar || "Calendar";
-    if (tabSchedule) tabSchedule.textContent = i18n.admin?.tabSchedule || "Work Schedule"; // NEW
+    if (tabSchedule) tabSchedule.textContent = i18n.admin?.tabSchedule || "Work Schedule"; 
+	if (syncTitle) syncTitle.textContent = i18n.admin?.calendarSyncTitle || "Sync Calendar";
+    if (syncDesc) syncDesc.textContent = i18n.admin?.calendarSyncText || "Subscribe to updates.";
+    if (getSyncLinkBtn) getSyncLinkBtn.textContent = i18n.admin?.calendarSyncBtn || "Get Link";
     if (tabSettings) tabSettings.textContent = i18n.admin?.tabSettings || "Settings";
 
     if (settingsTitleH3) settingsTitleH3.textContent = i18n.admin?.settingsTitle || "Settings";
@@ -867,6 +873,54 @@ function confirmDelete(clickInfo) {
     }).then(res => {
          if(res.isConfirmed) db.collection('appointments').doc(clickInfo.event.id).delete()
             .then(() => { clickInfo.event.remove(); Swal.fire(i18n.admin?.deleteSuccessTitle, '', 'success'); });
+    });
+}
+
+if (getSyncLinkBtn) {
+    getSyncLinkBtn.addEventListener('click', () => {
+        if (!currentUser) return;
+        
+        // 1. Construct the Magic URL
+        // NOTE: Replace 'us-central1-auna-board' with your ACTUAL project ID if different
+        const projectId = "auna-board"; 
+        const region = "us-central1";
+        const feedUrl = `https://${region}-${projectId}.cloudfunctions.net/calendarFeed?uid=${currentUser.uid}`;
+        
+        // 2. Special Link for Apple Devices (webcal:// opens the app directly)
+        const webcalUrl = feedUrl.replace('https://', 'webcal://');
+
+        // 3. Show SweetAlert with Options
+        Swal.fire({
+            title: i18n.admin?.calendarSyncTitle,
+            html: `
+                <p style="font-size:0.9rem; color:#555; margin-bottom:15px;">
+                    ${i18n.admin?.calendarSyncText}
+                </p>
+                <div style="background:#f0f0f0; padding:10px; border-radius:5px; word-break:break-all; font-family:monospace; margin-bottom:15px; font-size:0.85rem;">
+                    ${feedUrl}
+                </div>
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                    <button id="swal-copy-btn" class="swal2-confirm swal2-styled" style="width:100%; margin:0;">
+                        📋 ${i18n.admin?.copyLink || "Copy Link (Google/Outlook)"}
+                    </button>
+                    <a href="${webcalUrl}" class="swal2-deny swal2-styled" style="width:100%; margin:0; text-decoration:none; display:inline-block;">
+                        🍏 ${i18n.admin?.addToIphone || "Subscribe on iPhone"}
+                    </a>
+                </div>
+            `,
+            showConfirmButton: false,
+            showCloseButton: true,
+            didOpen: () => {
+                const copyBtn = document.getElementById('swal-copy-btn');
+                copyBtn.addEventListener('click', () => {
+                    navigator.clipboard.writeText(feedUrl);
+                    copyBtn.textContent = i18n.admin?.linkCopied || "Copied!";
+                    setTimeout(() => {
+                         Swal.close(); 
+                    }, 1000);
+                });
+            }
+        });
     });
 }
 
