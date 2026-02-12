@@ -76,6 +76,18 @@ const addVacationBtn = document.getElementById('add-vacation-btn');
 const vacationList = document.getElementById('vacation-list');
 const saveSettingsBtn = document.getElementById('save-settings-btn');
 
+const chkNewAppt = document.getElementById('chk-new-appt');
+const chkCancelAppt = document.getElementById('chk-cancel-appt');
+const chkReminderAppt = document.getElementById('chk-reminder-appt');
+const selRemindTime = document.getElementById('sel-remind-time');
+const saveNotifPrefsBtn = document.getElementById('save-notif-prefs-btn');
+// Labels for translation
+const lblNewAppt = document.getElementById('lbl-new-appt');
+const lblCancelAppt = document.getElementById('lbl-cancel-appt');
+const lblReminderAppt = document.getElementById('lbl-reminder-appt');
+const lblRemindTime = document.getElementById('lbl-remind-time');
+const notifPrefTitle = document.getElementById('notif-pref-title');
+
 // --- Calendar element ---
 const calendarEl = document.getElementById('calendar-container');
 
@@ -153,6 +165,22 @@ function applyStaticTextsAdmin() {
     if (addVacationBtn) addVacationBtn.textContent = i18n.admin?.addVacationButton || "Block";
     if (saveSettingsBtn) saveSettingsBtn.textContent = i18n.admin?.saveSettingsButton || "Save Settings";
     if (copyScheduleBtn) copyScheduleBtn.textContent = i18n.admin?.copyToAll || "Copy Mon to All";
+	
+	if (notifPrefTitle) notifPrefTitle.textContent = i18n.admin?.notifPreferencesTitle || "Notification Preferences";
+    if (lblNewAppt) lblNewAppt.textContent = i18n.admin?.notifNewApptLabel || "New Appointment Alerts";
+    if (lblCancelAppt) lblCancelAppt.textContent = i18n.admin?.notifCancelLabel || "Cancellation Alerts";
+    if (lblReminderAppt) lblReminderAppt.textContent = i18n.admin?.notifReminderLabel || "Upcoming Reminder";
+    if (lblRemindTime) lblRemindTime.textContent = i18n.admin?.notifTimeLabel || "Time before:";
+    if (saveNotifPrefsBtn) saveNotifPrefsBtn.textContent = i18n.admin?.savePreferencesBtn || "Save";
+    
+    // Update Dropdown Options dynamically
+    if (i18n.admin?.timeOptions) {
+        Array.from(selRemindTime.options).forEach(opt => {
+            if (i18n.admin.timeOptions[opt.value]) {
+                opt.textContent = i18n.admin.timeOptions[opt.value];
+            }
+        });
+    }
 }
 
 // =================================================================
@@ -196,6 +224,20 @@ async function loadDoctorProfileAndAppointments() {
         if (docSnap.exists) {
             const data = docSnap.data();
             currentDoctorStatus = data.status || 'Available';
+			
+			// --- LOAD NOTIFICATION PREFERENCES ---
+			const prefs = data.notificationSettings || {};
+			// Default to TRUE if not set
+			chkNewAppt.checked = prefs.newAppt !== false; 
+			chkCancelAppt.checked = prefs.cancelAppt !== false;
+			chkReminderAppt.checked = prefs.reminderEnabled === true; // Default false for reminders
+			selRemindTime.value = prefs.reminderMinutes || "30";
+
+			// Toggle visibility of time selector
+			selRemindTime.disabled = !chkReminderAppt.checked;
+			chkReminderAppt.addEventListener('change', () => {
+				selRemindTime.disabled = !chkReminderAppt.checked;
+			});
             
             // --- LOAD SCHEDULE & VACATIONS ---
             // If none exists, load default
@@ -1057,6 +1099,35 @@ if (enableNotifBtn) {
             showConfirmButton: false,
             timer: 5000
         });
+    });
+}
+
+if (saveNotifPrefsBtn) {
+    saveNotifPrefsBtn.addEventListener('click', async () => {
+        if (!currentDoctorDocId) return;
+        
+        saveNotifPrefsBtn.disabled = true;
+        saveNotifPrefsBtn.textContent = "Saving...";
+
+        const settings = {
+            newAppt: chkNewAppt.checked,
+            cancelAppt: chkCancelAppt.checked,
+            reminderEnabled: chkReminderAppt.checked,
+            reminderMinutes: parseInt(selRemindTime.value)
+        };
+
+        try {
+            await db.collection('doctors').doc(currentDoctorDocId).update({
+                notificationSettings: settings
+            });
+            Swal.fire('Saved', 'Notification preferences updated.', 'success');
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Error', 'Could not save settings.', 'error');
+        } finally {
+            saveNotifPrefsBtn.disabled = false;
+            saveNotifPrefsBtn.textContent = i18n.admin?.savePreferencesBtn || "Save Preferences";
+        }
     });
 }
 

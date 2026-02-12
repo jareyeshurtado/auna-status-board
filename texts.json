@@ -104,7 +104,19 @@
       "calendarSyncText": "Use this link to subscribe to your appointments from your phone or Google Calendar.",
       "copyLink": "Copy Link",
       "addToIphone": "Subscribe on iPhone/Mac",
-      "linkCopied": "Link copied to clipboard!"
+      "linkCopied": "Link copied to clipboard!",
+	  "notifPreferencesTitle": "Notification Preferences",
+      "notifNewApptLabel": "New Appointment Alerts",
+      "notifCancelLabel": "Cancellation Alerts",
+      "notifReminderLabel": "Upcoming Appointment Reminder",
+      "notifTimeLabel": "Remind me before:",
+      "timeOptions": {
+        "15": "15 minutes before",
+        "30": "30 minutes before",
+        "60": "1 hour before",
+        "120": "2 hours before"
+      },
+      "savePreferencesBtn": "Save Preferences"
     },
     "display": {
       "headerDoctor": "Doctor",
@@ -220,7 +232,19 @@
       "calendarSyncText": "Use este enlace para suscribirse a sus citas desde su celular o Google Calendar.",
       "copyLink": "Syncronizar Calendario",
       "addToIphone": "Suscribir en iPhone/Mac",
-      "linkCopied": "¡Link copiado!"
+      "linkCopied": "¡Link copiado!",
+	  "notifPreferencesTitle": "Preferencias de Notificaciones",
+      "notifNewApptLabel": "Alerta de Nueva Cita",
+      "notifCancelLabel": "Alerta de Cancelación",
+      "notifReminderLabel": "Recordatorio de Próxima Cita",
+      "notifTimeLabel": "Recordarme antes de:",
+      "timeOptions": {
+        "15": "15 minutos antes",
+        "30": "30 minutos antes",
+        "60": "1 hora antes",
+        "120": "2 horas antes"
+      },
+      "savePreferencesBtn": "Guardar Preferencias"
     },
     "display": {
       "headerDoctor": "Doctor",
