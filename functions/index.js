@@ -1,6 +1,8 @@
 const { setGlobalOptions } = require("firebase-functions/v2");
 const { onRequest } = require("firebase-functions/v2/https");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
+
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -80,5 +82,53 @@ exports.calendarFeed = onRequest(async (req, res) => {
     } catch (error) {
         console.error("Error generating calendar:", error);
         res.status(500).send("Internal Server Error");
+    }
+});
+
+exports.sendAppointmentNotification = onDocumentCreated("appointments/{apptId}", async (event) => {
+    const snapshot = event.data;
+    if (!snapshot) return;
+
+    const data = snapshot.data();
+    const doctorId = data.doctorId;
+    
+    if (!doctorId) return;
+
+    try {
+        // 1. Get the Doctor's FCM Token from their profile
+        const doctorDoc = await db.collection('doctors').doc(doctorId).get();
+        
+        if (!doctorDoc.exists) {
+            console.log(`No doctor found for ID: ${doctorId}`);
+            return;
+        }
+
+        const doctorData = doctorDoc.data();
+        const fcmToken = doctorData.fcmToken;
+
+        if (!fcmToken) {
+            console.log(`Doctor ${doctorId} has no notification token registered.`);
+            return;
+        }
+
+        // 2. Create the Message
+        const message = {
+            token: fcmToken,
+            notification: {
+                title: 'New Appointment!',
+                body: `${data.patientName} - ${new Date(data.start).toLocaleTimeString('en-US', {timeZone: 'America/Mexico_City', hour: '2-digit', minute:'2-digit'})}`
+            },
+            // Optional: Data payload for clicking the notification
+            data: {
+                appointmentId: event.params.apptId
+            }
+        };
+
+        // 3. Send it!
+        const response = await admin.messaging().send(message);
+        console.log('Successfully sent message:', response);
+
+    } catch (error) {
+        console.error('Error sending notification:', error);
     }
 });

@@ -132,6 +132,12 @@
                         <p id="multi-doctor-message" style="margin-top: 5px; font-size: 0.9rem; min-height: 20px;"></p>
                     </div>
 					
+					<h3 id="notif-title">Notifications</h3>
+					<div style="background: white; padding: 15px; border: 1px solid #ddd; border-radius: 8px;">
+						<p id="notif-desc" style="color: #666; margin-top:0;">Receive instant alerts on this device.</p>
+						<button id="enable-notif-btn" style="background-color: #ff9800;">🔔 Enable Push Notifications</button>
+						<p id="notif-status" style="font-size: 0.9rem; margin-top: 10px; font-weight: bold;"></p>
+					</div>
                     
                     <h3 id="sync-title">Calendar Sync</h3>
                     <div style="background: white; padding: 15px; border: 1px solid #ddd; border-radius: 8px;">
@@ -152,6 +158,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.34/moment-timezone-with-data.min.js"></script>

@@ -12,7 +12,9 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+const messaging = firebase.messaging();
 const MEXICO_TIMEZONE = "America/Mexico_City";
+const publicVapidKey = "BCAf8hW_aOvmRB_HC2GU2_G3HhmDS5LMAMDv9P1ruVtyL4HG_0XpNNPRECppOfbHhFB9CWJMtl1lrFwacRW8K8o";
 
 // STEP 3: Get references
 // --- Login elements ---
@@ -76,6 +78,10 @@ const saveSettingsBtn = document.getElementById('save-settings-btn');
 
 // --- Calendar element ---
 const calendarEl = document.getElementById('calendar-container');
+
+// --- Push Notifications ---
+const enableNotifBtn = document.getElementById('enable-notif-btn');
+const notifStatus = document.getElementById('notif-status');
 
 // STEP 4: Global variables
 let currentUser = null;
@@ -449,7 +455,32 @@ function onLoginClick() {
     auth.signInWithEmailAndPassword(email, password)
         .then(() => {}) .catch(error => { loginMessage.textContent = (i18n.admin?.loginErrorFirebase || 'Error:') + ' ' + error.message; });
 }
-function onSignOutClick() { auth.signOut().catch(error => console.error("Sign Out Error:", error)); }
+async function onSignOutClick() { 
+    if (currentUser && currentDoctorDocId) {
+        // 1. Security Step: Remove the Notification Token from DB
+        try {
+            await db.collection('doctors').doc(currentDoctorDocId).update({
+                fcmToken: firebase.firestore.FieldValue.delete()
+            });
+            console.log("Token removed for security.");
+        } catch (e) {
+            console.error("Could not remove token:", e);
+        }
+    }
+
+    // 2. Clear Local Data
+    localStorage.removeItem('currentConsultationApptId');
+    
+    // 3. Actually Sign Out
+    auth.signOut()
+        .then(() => {
+            console.log("Signed out successfully");
+            // Optional: Reload to clear any memory states
+            window.location.reload();
+        })
+        .catch(error => console.error("Sign Out Error:", error)); 
+}
+
 function onChangePasswordClick() {
     if (!currentUser) { Swal.fire('Error!', 'Must be logged in.', 'error'); return; }
     const email = currentUser.email; passwordMessage.textContent = i18n.admin?.sendingResetEmail; passwordMessage.style.color = '#555';
@@ -970,6 +1001,61 @@ if (getSyncLinkBtn) {
                     }, 1500);
                 });
             }
+        });
+    });
+}
+
+if (enableNotifBtn) {
+    enableNotifBtn.addEventListener('click', async () => {
+        if (!currentUser || !currentDoctorDocId) return;
+
+        enableNotifBtn.disabled = true;
+        notifStatus.textContent = "Requesting permission...";
+
+        try {
+            // 1. Request Permission
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                throw new Error('Permission denied');
+            }
+
+            // 2. Get Token
+            const token = await messaging.getToken({ vapidKey: publicVapidKey });
+            
+            if (token) {
+                // 3. Save Token to Doctor's Profile
+                await db.collection('doctors').doc(currentDoctorDocId).update({
+                    fcmToken: token
+                });
+                
+                notifStatus.textContent = "✅ Notifications Active on this device!";
+                notifStatus.style.color = "green";
+                Swal.fire('Success', 'You will now receive instant alerts on this phone.', 'success');
+            } else {
+                notifStatus.textContent = "No registration token available.";
+            }
+
+        } catch (err) {
+            console.error('An error occurred while retrieving token. ', err);
+            notifStatus.textContent = "Error: " + err.message;
+            notifStatus.style.color = "red";
+        } finally {
+            enableNotifBtn.disabled = false;
+        }
+    });
+    
+    // Optional: Listen for foreground messages
+    messaging.onMessage((payload) => {
+        console.log('Message received. ', payload);
+        // If the doctor has the admin page open, show a Swal alert instead of a banner
+        Swal.fire({
+            title: payload.notification.title,
+            text: payload.notification.body,
+            icon: 'info',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 5000
         });
     });
 }
