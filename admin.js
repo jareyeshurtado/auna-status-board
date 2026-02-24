@@ -846,36 +846,64 @@ function initializeCalendar(uid) {
 function setupMultiDoctorDropdown(data) {
     if (!multiDoctorContainer || !multiDoctorSelect) return;
     multiDoctorContainer.style.display = 'block';
+    
     const options = [];
     Object.keys(data).forEach(key => {
         if (key.startsWith('doctorDisplayOption')) {
             options.push({ key: key, name: data[key] });
         }
     });
+    
     options.sort((a, b) => {
         const numA = parseInt(a.key.replace('doctorDisplayOption', '')) || 0;
         const numB = parseInt(b.key.replace('doctorDisplayOption', '')) || 0;
         return numA - numB;
     });
+    
     multiDoctorSelect.innerHTML = '';
     options.forEach(opt => {
         const el = document.createElement('option');
         el.value = opt.name; 
+        el.dataset.key = opt.key; // NEW: Store the original key (e.g., doctorDisplayOption2)
         el.textContent = opt.name;
         multiDoctorSelect.appendChild(el);
     });
+    
     if (data.displayName) { multiDoctorSelect.value = data.displayName; }
+    
     const newSelect = multiDoctorSelect.cloneNode(true);
     multiDoctorSelect.parentNode.replaceChild(newSelect, multiDoctorSelect);
+    
+    // NEW: The updated Change Listener
     newSelect.addEventListener('change', async (e) => {
-        const newName = e.target.value;
+        const selectedOption = e.target.options[e.target.selectedIndex];
+        const newName = selectedOption.value;
+        const optionKey = selectedOption.dataset.key; // Gets 'doctorDisplayOption1', 'doctorDisplayOption2', etc.
+        
+        // Extract the number and find the matching specialty
+        const number = optionKey.replace('doctorDisplayOption', ''); 
+        const matchingSpecialty = data['specialty' + number] || ""; // Looks for specialty1, specialty2...
+
         const msgEl = document.getElementById('multi-doctor-message'); 
-        msgEl.textContent = i18n.admin?.updatingStatusButton || "Updating..."; msgEl.style.color = "#666";
+        msgEl.textContent = i18n.admin?.updatingStatusButton || "Updating..."; 
+        msgEl.style.color = "#666";
+        
         try {
-            await db.collection('doctors').doc(currentDoctorDocId).update({ displayName: newName });
-            msgEl.textContent = (i18n.admin?.doctorChangedSuccess || "Updated to: ") + newName; msgEl.style.color = "green";
+            // Update BOTH the name and the specialty in the database
+            await db.collection('doctors').doc(currentDoctorDocId).update({ 
+                displayName: newName,
+                specialty: matchingSpecialty // <--- This pushes the new specialty to the display!
+            });
+            
+            msgEl.textContent = (i18n.admin?.doctorChangedSuccess || "Updated to: ") + newName; 
+            msgEl.style.color = "green";
             setTimeout(() => { msgEl.textContent = ''; }, 3000);
-        } catch (error) { console.error(error); msgEl.textContent = i18n.admin?.doctorUpdateError || "Error updating."; msgEl.style.color = "red"; }
+            
+        } catch (error) { 
+            console.error(error); 
+            msgEl.textContent = i18n.admin?.doctorUpdateError || "Error updating."; 
+            msgEl.style.color = "red"; 
+        }
     });
 }
 

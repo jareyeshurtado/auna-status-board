@@ -161,6 +161,9 @@ exports.sendAppointmentNotification = onDocumentCreated("appointments/{apptId}",
 // ==================================================================
 // 3. CANCELLATION NOTIFICATION (Bonus Feature)
 // ==================================================================
+// ==================================================================
+// 3. CANCELLATION NOTIFICATION (Updated with Smart Search)
+// ==================================================================
 exports.sendCancellationNotification = onDocumentDeleted("appointments/{apptId}", async (event) => {
     const snapshot = event.data;
     if (!snapshot) return;
@@ -170,9 +173,20 @@ exports.sendCancellationNotification = onDocumentDeleted("appointments/{apptId}"
     if (new Date(data.start).getTime() < Date.now()) return;
 
     try {
-        const doctorDoc = await db.collection('doctors').doc(data.doctorId).get();
-        if (!doctorDoc.exists) return; // Should likely impliment AuthUID search here too if consistent issue
-        const docData = doctorDoc.data();
+        const doctorId = data.doctorId;
+        let docData = null;
+
+        // STRATEGY 1: Direct ID
+        let doctorDoc = await db.collection('doctors').doc(doctorId).get();
+        if (doctorDoc.exists) {
+            docData = doctorDoc.data();
+        } else {
+            // STRATEGY 2: AuthUID lookup (The Fix)
+            const q2 = await db.collection('doctors').where('authUID', '==', doctorId).limit(1).get();
+            if(!q2.empty) docData = q2.docs[0].data();
+        }
+
+        if (!docData) return;
         
         // CHECK PREFERENCE
         const prefs = docData.notificationSettings || {};
