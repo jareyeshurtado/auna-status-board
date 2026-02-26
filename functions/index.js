@@ -121,7 +121,7 @@ exports.sendAppointmentNotification = onDocumentCreated("appointments/{apptId}",
             return;
         }
 
-        // Create the Message (With Sound)
+        // Create the Message (With Sound AND Web-Push Wakeup)
         const message = {
             token: fcmToken,
             notification: {
@@ -131,18 +131,16 @@ exports.sendAppointmentNotification = onDocumentCreated("appointments/{apptId}",
             android: {
                 priority: 'high',
                 notification: {
-                    sound: 'default',
-                    channelId: 'default',
-                    priority: 'high',
-                    defaultSound: true
+                    sound: 'default', channelId: 'default', priority: 'high', defaultSound: true
                 }
             },
             apns: {
-                payload: {
-                    aps: {
-                        sound: 'default',
-                        contentAvailable: true
-                    }
+                payload: { aps: { sound: 'default', contentAvailable: true } }
+            },
+            // NEW: Wakes up Chrome on Android from Sleep Mode!
+            webpush: {
+                headers: {
+                    Urgency: "high"
                 }
             },
             data: {
@@ -199,7 +197,9 @@ exports.sendCancellationNotification = onDocumentDeleted("appointments/{apptId}"
                     title: '❌ Appointment Cancelled',
                     body: `${data.patientName} was scheduled for today.`
                 },
-                android: { priority: 'high', notification: { sound: 'default' } }
+                android: { priority: 'high', notification: { sound: 'default' } },
+                    // NEW: Wakes up Chrome
+                    webpush: { headers: { Urgency: "high" } } 
             };
             await admin.messaging().send(message);
         }
@@ -209,17 +209,16 @@ exports.sendCancellationNotification = onDocumentDeleted("appointments/{apptId}"
 // ==================================================================
 // 4. THE CRON JOB (Reminders) - Runs every 5 minutes
 // ==================================================================
-exports.sendAppointmentReminders = onSchedule("every 5 minutes", async (event) => {
+exports.sendAppointmentReminders = onSchedule("*/5 * * * *", async (event) => {
     const now = new Date();
-    // Look ahead 2.5 hours max (covers the 2-hour reminder setting)
+    // Look ahead 2.5 hours max
     const lookAhead = new Date(now.getTime() + (150 * 60000)); 
 
     try {
-        // 1. Get appointments starting soon that haven't been reminded yet
+        // FIX: Removed the '!=' filter to stop Firestore from crashing
         const query = await db.collection('appointments')
             .where('start', '>=', now.toISOString())
             .where('start', '<=', lookAhead.toISOString())
-            .where('reminderSent', '!=', true) 
             .get();
 
         if (query.empty) return;
@@ -227,18 +226,20 @@ exports.sendAppointmentReminders = onSchedule("every 5 minutes", async (event) =
         // 2. Loop through appointments
         const promises = query.docs.map(async (apptDoc) => {
             const appt = apptDoc.data();
+            
+            // FIX: Check reminderSent manually in JavaScript instead!
+            if (appt.reminderSent === true) return; 
+
             const doctorId = appt.doctorId;
 
             // 3. Get Doctor Settings
             let docData = null;
             let fcmToken = null;
 
-            // Try direct lookup
             let doctorDoc = await db.collection('doctors').doc(doctorId).get();
             if (doctorDoc.exists) {
                 docData = doctorDoc.data();
             } else {
-                 // Try AuthUID lookup (Fix for identity crisis)
                  const q2 = await db.collection('doctors').where('authUID', '==', doctorId).limit(1).get();
                  if(!q2.empty) docData = q2.docs[0].data();
             }
@@ -248,32 +249,27 @@ exports.sendAppointmentReminders = onSchedule("every 5 minutes", async (event) =
             const prefs = docData.notificationSettings || {};
             fcmToken = docData.fcmToken;
 
-            // 4. Check if Reminder is Enabled
             if (!prefs.reminderEnabled || !prefs.reminderMinutes || !fcmToken) return;
 
-            // 5. Calculate Time Difference
             const start = new Date(appt.start).getTime();
             const diffMinutes = (start - now.getTime()) / 60000;
             const targetMinutes = prefs.reminderMinutes;
 
-            // 6. Logic: Send if we are within the "Target Window"
-            // Example: Target is 30 mins. 
-            // If current diff is between 25 and 35, send it.
             if (diffMinutes <= targetMinutes && diffMinutes > (targetMinutes - 5)) {
                 
-                // Send Notification
                 const message = {
                     token: fcmToken,
                     notification: {
                         title: '⏰ Appointment Reminder',
                         body: `In ${Math.round(diffMinutes)} mins: ${appt.patientName}`
                     },
-                    android: { priority: 'high', notification: { sound: 'default' } }
+                    android: { priority: 'high', notification: { sound: 'default' } },
+                    // NEW: Wakes up Chrome
+                    webpush: { headers: { Urgency: "high" } } 
                 };
                 
                 await admin.messaging().send(message);
 
-                // MARK AS SENT so we don't annoy them again 5 mins later
                 await db.collection('appointments').doc(apptDoc.id).update({
                     reminderSent: true
                 });
